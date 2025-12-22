@@ -1,4 +1,4 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { OrderItem } from '@/types';
@@ -24,7 +24,7 @@ type Category = 'Tea' | 'Snacks' | 'Cold Drink' | 'Pastry' | 'Favorites';
 export default function TableOrder() {
   const { tableNumber } = useParams();
   const navigate = useNavigate();
-  const { menuItems, settings, addOrder, orders, getCustomerPoints, customers } = useStore();
+  const { menuItems, settings, addOrder, getCustomerPoints } = useStore();
   
   const [phone, setPhone] = useState('');
   const [isPhoneEntered, setIsPhoneEntered] = useState(false);
@@ -51,6 +51,24 @@ export default function TableOrder() {
       navigate('/');
     }
   }, [table, settings.tableCount, navigate]);
+
+  // Keep customer "logged in" (persist phone per table)
+  useEffect(() => {
+    if (!table) return;
+    const key = `chiyadani:customerSession:table:${table}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as { phone?: string; isPhoneEntered?: boolean };
+      if (parsed.phone && parsed.phone.length >= 10) {
+        setPhone(parsed.phone);
+        setIsPhoneEntered(Boolean(parsed.isPhoneEntered));
+      }
+    } catch {
+      // ignore invalid session
+    }
+  }, [table]);
 
   const categories: Category[] = ['Favorites', 'Tea', 'Snacks', 'Cold Drink', 'Pastry'];
   
@@ -127,6 +145,12 @@ export default function TableOrder() {
       toast.error('Please enter a valid phone number');
       return;
     }
+
+    if (table) {
+      const key = `chiyadani:customerSession:table:${table}`;
+      localStorage.setItem(key, JSON.stringify({ phone, isPhoneEntered: true }));
+    }
+
     setIsPhoneEntered(true);
   };
 
