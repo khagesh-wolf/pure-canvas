@@ -288,12 +288,20 @@ export default function Counter() {
   };
 
   const viewTransactionDetail = (t: typeof transactions[0]) => {
+    // Map items to include total (qty * price)
+    const itemsWithTotal = t.items.map(item => ({
+      name: item.name,
+      qty: item.qty,
+      price: item.price,
+      total: item.qty * item.price
+    }));
+
     setCurrentDetailData({
       id: t.id,
       date: t.paidAt,
       table: t.tableNumber,
       phones: t.customerPhones.join(', ') || 'Guest',
-      items: t.items,
+      items: itemsWithTotal,
       total: t.total,
       discount: t.discount,
       method: t.paymentMethod
