@@ -66,8 +66,9 @@ export default function TableOrder() {
     ? getWaitTimeForNewOrder(cart.map(c => ({ name: c.name, qty: c.qty })))
     : 0;
 
-  // Get customer's orders for this table - only show pending and accepted
-  const myOrders = orders.filter(
+  // Get customer's orders for this table - subscribe to orders from store directly for real-time updates
+  const storeOrders = useStore(state => state.orders);
+  const myOrders = storeOrders.filter(
     o => o.tableNumber === table && o.customerPhone === phone && ['pending', 'accepted'].includes(o.status)
   );
   const totalDue = myOrders.reduce((sum, o) => 
