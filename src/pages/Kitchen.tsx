@@ -4,16 +4,15 @@ import { useStore } from '@/store/useStore';
 import { Order, OrderStatus } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Clock, ChefHat, Coffee, RefreshCw } from 'lucide-react';
+import { Check, X, Clock, ChefHat, Bell, CheckCircle, LogOut, Coffee, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalTime, formatNepalDateTime } from '@/lib/nepalTime';
-import { MainLayout } from '@/components/layout/MainLayout';
 
 const statusFlow: OrderStatus[] = ['pending', 'accepted'];
 
 export default function Kitchen() {
   const navigate = useNavigate();
-  const { orders, updateOrderStatus, isAuthenticated, settings } = useStore();
+  const { orders, updateOrderStatus, isAuthenticated, logout, settings } = useStore();
   const [filter, setFilter] = useState<'all' | OrderStatus>('all');
 
   if (!isAuthenticated) {
@@ -42,9 +41,12 @@ export default function Kitchen() {
     return idx >= 0 && idx < statusFlow.length - 1 ? statusFlow[idx + 1] : null;
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/auth');
+  };
 
   return (
-    <MainLayout showHeader={false}>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="page-header px-6 py-4">
@@ -73,6 +75,14 @@ export default function Kitchen() {
               className="rounded-lg"
             >
               <RefreshCw className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleLogout}
+              className="rounded-lg"
+            >
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -131,7 +141,6 @@ export default function Kitchen() {
         )}
       </div>
     </div>
-    </MainLayout>
   );
 }
 

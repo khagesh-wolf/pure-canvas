@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Plus, Edit, Trash2, Settings, LayoutDashboard, 
+  Plus, Edit, Trash2, LogOut, Settings, LayoutDashboard, 
   UtensilsCrossed, Users, QrCode, History, TrendingUp, ShoppingBag, DollarSign,
   Download, Search, Eye, UserCog, BarChart3, Calendar, Image as ImageIcon, ToggleLeft, ToggleRight
 } from 'lucide-react';
@@ -31,7 +31,6 @@ import {
   restaurantNameSchema,
   sanitizeText
 } from '@/lib/validation';
-import { MainLayout } from '@/components/layout/MainLayout';
 
 type Category = 'Tea' | 'Snacks' | 'Cold Drink' | 'Pastry';
 const categories: Category[] = ['Tea', 'Snacks', 'Cold Drink', 'Pastry'];
@@ -46,7 +45,7 @@ export default function Admin() {
     bulkToggleAvailability,
     customers, transactions, staff, settings, updateSettings,
     addStaff, updateStaff, deleteStaff,
-    isAuthenticated, currentUser, getTodayStats
+    isAuthenticated, currentUser, logout, getTodayStats
   } = useStore();
 
   const [tab, setTab] = useState('dashboard');
@@ -415,6 +414,10 @@ export default function Admin() {
     toast.success('Staff deleted');
   };
 
+  const handleLogout = () => { 
+    logout(); 
+    navigate('/auth'); 
+  };
 
   const exportCustomersCSV = () => {
     const headers = ['Phone', 'Name', 'Total Orders', 'Total Spent', 'Points', 'Last Visit'];
@@ -676,7 +679,6 @@ export default function Admin() {
   ];
 
   return (
-    <MainLayout showHeader={false}>
     <div className="min-h-screen bg-background flex">
       {/* Sidebar - Premium Dark Theme */}
       <aside className="w-72 sidebar flex flex-col sticky top-0 h-screen">
@@ -702,6 +704,15 @@ export default function Admin() {
             </button>
           ))}
         </nav>
+        <div className="p-4 border-t border-sidebar-border">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-xl" 
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4 mr-3" /> Logout
+          </Button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -1662,7 +1673,6 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
     </div>
-    </MainLayout>
   );
 }
 
