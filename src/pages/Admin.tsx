@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { MenuItem, Customer, Staff } from '@/types';
@@ -105,8 +105,13 @@ export default function Admin() {
   const isAuthorized = currentUser?.role === 'admin' || 
     (currentUser?.role === 'counter' && settings.counterAsAdmin);
   
+  useEffect(() => {
+    if (!isAuthenticated || !isAuthorized) {
+      navigate('/auth');
+    }
+  }, [isAuthenticated, isAuthorized, navigate]);
+
   if (!isAuthenticated || !isAuthorized) {
-    navigate('/auth');
     return null;
   }
 
@@ -1339,18 +1344,18 @@ export default function Admin() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium">Restaurant Name</label>
-                      <Input value={settings.restaurantName} onChange={e => updateSettings({ restaurantName: e.target.value })} />
+                      <Input value={settings.restaurantName || ''} onChange={e => updateSettings({ restaurantName: e.target.value })} />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Table Count</label>
-                      <Input type="number" value={settings.tableCount} onChange={e => updateSettings({ tableCount: parseInt(e.target.value) || 10 })} />
+                      <Input type="number" value={settings.tableCount || 10} onChange={e => updateSettings({ tableCount: parseInt(e.target.value) || 10 })} />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Base URL (for QR codes)</label>
                       <div className="flex gap-2">
                         <Input 
-                          value={settings.baseUrl} 
-                          onChange={e => updateSettings({ baseUrl: e.target.value })} 
+                          value={settings.baseUrl || ''} 
+                          onChange={e => updateSettings({ baseUrl: e.target.value })}
                           placeholder={window.location.origin} 
                           className="flex-1"
                         />
@@ -1531,11 +1536,11 @@ export default function Admin() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium">WiFi SSID</label>
-                      <Input value={settings.wifiSSID} onChange={e => updateSettings({ wifiSSID: e.target.value })} />
+                      <Input value={settings.wifiSSID || ''} onChange={e => updateSettings({ wifiSSID: e.target.value })} />
                     </div>
                     <div>
                       <label className="text-sm font-medium">WiFi Password</label>
-                      <Input value={settings.wifiPassword} onChange={e => updateSettings({ wifiPassword: e.target.value })} />
+                      <Input value={settings.wifiPassword || ''} onChange={e => updateSettings({ wifiPassword: e.target.value })} />
                     </div>
                   </div>
                 </div>

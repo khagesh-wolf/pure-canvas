@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
@@ -21,14 +21,16 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already logged in
-  if (isAuthenticated && currentUser) {
-    // Counter users go to admin if counterAsAdmin is enabled
-    if (currentUser.role === 'admin' || settings.counterAsAdmin) {
-      navigate('/admin');
-    } else {
-      navigate('/counter');
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      // Counter users go to admin if counterAsAdmin is enabled
+      if (currentUser.role === 'admin' || settings.counterAsAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/counter');
+      }
     }
-  }
+  }, [isAuthenticated, currentUser, settings.counterAsAdmin, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
