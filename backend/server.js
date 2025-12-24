@@ -631,49 +631,37 @@ app.put('/api/settings', (req, res) => {
       pointSystemEnabled, pointsPerRupee, pointValueInRupees, maxDiscountRupees, maxDiscountPoints
     } = req.body;
     
-    // Check which columns exist to build dynamic query
-    const columns = db.pragma('table_info(settings)');
-    const columnNames = columns.map(col => col.name);
+    // Get existing settings to preserve any fields we're not updating
+    const existing = queryOne('SELECT * FROM settings WHERE id=1');
     
-    // Build update parts dynamically based on existing columns
-    const updates = [];
-    const values = [];
+    // Build a simple update with only the core fields that are guaranteed to exist
+    db.run(`
+      UPDATE settings SET 
+        restaurant_name=?, table_count=?, wifi_ssid=?, wifi_password=?, base_url=?, 
+        logo=?, instagram_url=?, facebook_url=?, tiktok_url=?, google_review_url=?
+      WHERE id=1
+    `, [
+      restaurantName ?? existing?.restaurant_name, 
+      tableCount ?? existing?.table_count, 
+      wifiSSID ?? existing?.wifi_ssid, 
+      wifiPassword ?? existing?.wifi_password, 
+      baseUrl ?? existing?.base_url, 
+      logo ?? existing?.logo,
+      instagramUrl ?? existing?.instagram_url, 
+      facebookUrl ?? existing?.facebook_url, 
+      tiktokUrl ?? existing?.tiktok_url, 
+      googleReviewUrl ?? existing?.google_review_url
+    ]);
     
-    // Core fields (always exist)
-    updates.push('restaurant_name=?', 'table_count=?', 'wifi_ssid=?', 'wifi_password=?', 'base_url=?', 'logo=?');
-    values.push(restaurantName, tableCount, wifiSSID, wifiPassword, baseUrl, logo);
+    // Try to update optional columns individually (will silently fail if column doesn't exist)
+    try { db.run('UPDATE settings SET counter_as_admin=? WHERE id=1', [counterAsAdmin ? 1 : 0]); } catch(e) { console.log('[Settings] counter_as_admin column missing'); }
+    try { db.run('UPDATE settings SET point_system_enabled=? WHERE id=1', [pointSystemEnabled ? 1 : 0]); } catch(e) { console.log('[Settings] point_system_enabled column missing'); }
+    try { db.run('UPDATE settings SET points_per_rupee=? WHERE id=1', [pointsPerRupee ?? 0.1]); } catch(e) { console.log('[Settings] points_per_rupee column missing'); }
+    try { db.run('UPDATE settings SET point_value_in_rupees=? WHERE id=1', [pointValueInRupees ?? 1]); } catch(e) { console.log('[Settings] point_value_in_rupees column missing'); }
+    try { db.run('UPDATE settings SET max_discount_rupees=? WHERE id=1', [maxDiscountRupees ?? null]); } catch(e) { console.log('[Settings] max_discount_rupees column missing'); }
+    try { db.run('UPDATE settings SET max_discount_points=? WHERE id=1', [maxDiscountPoints ?? null]); } catch(e) { console.log('[Settings] max_discount_points column missing'); }
     
-    updates.push('instagram_url=?', 'facebook_url=?', 'tiktok_url=?', 'google_review_url=?');
-    values.push(instagramUrl, facebookUrl, tiktokUrl, googleReviewUrl);
-    
-    if (columnNames.includes('counter_as_admin')) {
-      updates.push('counter_as_admin=?');
-      values.push(counterAsAdmin ? 1 : 0);
-    }
-    if (columnNames.includes('point_system_enabled')) {
-      updates.push('point_system_enabled=?');
-      values.push(pointSystemEnabled ? 1 : 0);
-    }
-    if (columnNames.includes('points_per_rupee')) {
-      updates.push('points_per_rupee=?');
-      values.push(pointsPerRupee ?? 0.1);
-    }
-    if (columnNames.includes('point_value_in_rupees')) {
-      updates.push('point_value_in_rupees=?');
-      values.push(pointValueInRupees ?? 1);
-    }
-    if (columnNames.includes('max_discount_rupees')) {
-      updates.push('max_discount_rupees=?');
-      values.push(maxDiscountRupees ?? null);
-    }
-    if (columnNames.includes('max_discount_points')) {
-      updates.push('max_discount_points=?');
-      values.push(maxDiscountPoints ?? null);
-    }
-    
-    const sql = `UPDATE settings SET ${updates.join(', ')} WHERE id=1`;
-    runQuery(sql, values);
-    
+    saveDatabase();
     broadcast('SETTINGS_UPDATE', req.body);
     res.json({ success: true });
   } catch (error) {
