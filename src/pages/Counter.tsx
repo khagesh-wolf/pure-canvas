@@ -35,6 +35,15 @@ interface BillGroup {
   createdAt: string;
 }
 
+interface PendingOrderGroup {
+  key: string;
+  phone: string;
+  tableNumber: number;
+  orders: Order[];
+  allItems: OrderItem[];
+  createdAt: string;
+}
+
 const expenseCategories = ['ingredients', 'utilities', 'salary', 'maintenance', 'other'] as const;
 
 export default function Counter() {
@@ -106,8 +115,39 @@ export default function Counter() {
   }
 
   // Filter orders
-  const pendingOrders = orders.filter(o => o.status === 'pending');
+  const pendingOrdersRaw = orders.filter(o => o.status === 'pending');
   const acceptedOrders = orders.filter(o => o.status === 'accepted');
+
+  // Group pending orders by customer (table + phone)
+  const getGroupedPendingOrders = (): PendingOrderGroup[] => {
+    const groups: Record<string, PendingOrderGroup> = {};
+    
+    pendingOrdersRaw.forEach(order => {
+      const key = `${order.tableNumber}_${order.customerPhone || 'Guest'}`;
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          phone: order.customerPhone || 'Guest',
+          tableNumber: order.tableNumber,
+          orders: [],
+          allItems: [],
+          createdAt: order.createdAt
+        };
+      }
+      groups[key].orders.push(order);
+      groups[key].allItems.push(...order.items);
+      // Keep earliest createdAt
+      if (new Date(order.createdAt) < new Date(groups[key].createdAt)) {
+        groups[key].createdAt = order.createdAt;
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  };
+
+  const pendingOrders = getGroupedPendingOrders();
 
   // Group accepted orders by table+phone for billing
   const getBillGroups = (): BillGroup[] => {
@@ -179,31 +219,48 @@ export default function Counter() {
 
   const historyData = getHistoryData();
 
-  const handleAccept = (order: Order) => {
-    // Re-check order status to prevent race condition with customer cancellation
-    const currentOrder = orders.find(o => o.id === order.id);
-    if (!currentOrder || currentOrder.status !== 'pending') {
-      toast.error('Order was cancelled by customer');
+  const handleAcceptGroup = (group: PendingOrderGroup) => {
+    // Accept all orders in the group
+    let accepted = 0;
+    group.orders.forEach(order => {
+      const currentOrder = orders.find(o => o.id === order.id);
+      if (currentOrder && currentOrder.status === 'pending') {
+        updateOrderStatus(order.id, 'accepted');
+        accepted++;
+      }
+    });
+    
+    if (accepted === 0) {
+      toast.error('Orders were cancelled by customer');
       return;
     }
-    updateOrderStatus(order.id, 'accepted');
-    toast.success('Order accepted');
-    printKOT(order);
+    
+    toast.success(`${accepted} order${accepted > 1 ? 's' : ''} accepted`);
+    printKOTGroup(group);
   };
 
-  const handleReject = (orderId: string) => {
-    // Re-check order status to prevent race condition
-    const currentOrder = orders.find(o => o.id === orderId);
-    if (!currentOrder || currentOrder.status !== 'pending') {
-      toast.error('Order was already cancelled');
+  const handleRejectGroup = (group: PendingOrderGroup) => {
+    if (!confirm(`Reject ${group.orders.length > 1 ? 'all ' + group.orders.length + ' orders' : 'this order'}?`)) return;
+    
+    let rejected = 0;
+    group.orders.forEach(order => {
+      const currentOrder = orders.find(o => o.id === order.id);
+      if (currentOrder && currentOrder.status === 'pending') {
+        updateOrderStatus(order.id, 'cancelled');
+        rejected++;
+      }
+    });
+    
+    if (rejected === 0) {
+      toast.error('Orders were already cancelled');
       return;
     }
-    if (!confirm('Reject this order?')) return;
-    updateOrderStatus(orderId, 'cancelled');
-    toast.info('Order rejected');
+    
+    toast.info(`${rejected} order${rejected > 1 ? 's' : ''} rejected`);
   };
 
-  const printKOT = (order: Order) => {
+  const printKOTGroup = (group: PendingOrderGroup) => {
+    const allNotes = group.orders.filter(o => o.notes).map(o => o.notes).join('; ');
     const printContent = `
       <div style="font-family: monospace; width: 300px; padding: 10px;">
         <div style="text-align: center; border-bottom: 1px dashed black; padding-bottom: 10px; margin-bottom: 10px;">
@@ -211,24 +268,25 @@ export default function Counter() {
           <div>${formatNepalDateTime(new Date())}</div>
         </div>
         <div style="font-size: 1.2rem; font-weight: bold; text-align: center; margin: 10px 0; border: 2px solid black; padding: 5px;">
-          TABLE ${order.tableNumber}
+          TABLE ${group.tableNumber}
         </div>
-        <div style="text-align: center; margin-bottom: 10px; font-weight: bold;">Customer: ${order.customerPhone}</div>
+        <div style="text-align: center; margin-bottom: 10px; font-weight: bold;">Customer: ${group.phone}</div>
+        ${group.orders.length > 1 ? `<div style="text-align: center; margin-bottom: 10px; font-size: 0.9rem;">(${group.orders.length} orders combined)</div>` : ''}
         <div style="border-bottom: 2px solid black; margin-bottom: 10px;"></div>
-        ${order.items.map(i => `
+        ${group.allItems.map(i => `
           <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; margin-bottom: 5px;">
             <span>${i.qty} x</span>
             <span>${i.name}</span>
           </div>
         `).join('')}
-        ${order.notes ? `
+        ${allNotes ? `
           <div style="border-top: 1px dashed black; margin-top: 10px; padding-top: 10px;">
             <div style="font-weight: bold; margin-bottom: 5px;">📝 Special Instructions:</div>
-            <div style="font-size: 1.1rem;">${order.notes}</div>
+            <div style="font-size: 1.1rem;">${allNotes}</div>
           </div>
         ` : ''}
         <div style="border-top: 2px solid black; margin-top: 20px; padding-top: 10px; text-align: center;">
-          Ref: #${order.id.slice(-6)}
+          Ref: #${group.orders.map(o => o.id.slice(-6)).join(', #')}
         </div>
       </div>
     `;
@@ -433,9 +491,9 @@ export default function Counter() {
             ))}
             
             {/* Pending Orders */}
-            {pendingOrders.slice(0, 2).map(order => (
+            {pendingOrders.slice(0, 2).map(group => (
               <div 
-                key={order.id} 
+                key={group.key} 
                 className="rounded-xl p-3 relative overflow-hidden bg-white"
                 style={{
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
@@ -443,26 +501,29 @@ export default function Counter() {
               >
                 <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-amber-400 to-orange-500" />
                 <div className="flex justify-between font-bold mb-1 text-gray-800">
-                  <span>Table {order.tableNumber}</span>
-                  <span className="text-xs font-normal text-gray-500">{formatNepalTime(order.createdAt)}</span>
+                  <span>Table {group.tableNumber}</span>
+                  <span className="text-xs font-normal text-gray-500">{formatNepalTime(group.createdAt)}</span>
                 </div>
-                <div className="text-xs text-gray-500 mb-1">Customer: {order.customerPhone}</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  Customer: {group.phone}
+                  {group.orders.length > 1 && <span className="ml-1 text-amber-600">({group.orders.length} orders)</span>}
+                </div>
                 <div className="text-xs text-gray-600 mb-2">
-                  {order.items.slice(0, 3).map(i => `${i.qty}x ${i.name}`).join(', ')}
-                  {order.items.length > 3 && ` +${order.items.length - 3} more`}
+                  {group.allItems.slice(0, 3).map(i => `${i.qty}x ${i.name}`).join(', ')}
+                  {group.allItems.length > 3 && ` +${group.allItems.length - 3} more`}
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
                     className="flex-1 h-8 text-xs bg-gradient-to-r from-emerald-500 to-emerald-600 text-white"
-                    onClick={() => handleAccept(order)}
+                    onClick={() => handleAcceptGroup(group)}
                   >
-                    <Check className="w-3 h-3 mr-1" /> Accept
+                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}
                   </Button>
                   <Button 
                     size="sm" 
                     className="h-8 text-xs bg-gradient-to-r from-red-500 to-red-600 text-white"
-                    onClick={() => handleReject(order.id)}
+                    onClick={() => handleRejectGroup(group)}
                   >
                     <X className="w-3 h-3" />
                   </Button>
@@ -522,9 +583,9 @@ export default function Counter() {
               </div>
             ))}
             
-            {pendingOrders.slice(2).map(order => (
+            {pendingOrders.slice(2).map(group => (
               <div 
-                key={order.id} 
+                key={group.key} 
                 className="rounded-xl p-3 relative overflow-hidden bg-white"
                 style={{
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
@@ -532,26 +593,29 @@ export default function Counter() {
               >
                 <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-amber-400 to-orange-500" />
                 <div className="flex justify-between font-bold mb-1 text-gray-800">
-                  <span>Table {order.tableNumber}</span>
-                  <span className="text-xs font-normal text-gray-500">{formatNepalTime(order.createdAt)}</span>
+                  <span>Table {group.tableNumber}</span>
+                  <span className="text-xs font-normal text-gray-500">{formatNepalTime(group.createdAt)}</span>
                 </div>
-                <div className="text-xs text-gray-500 mb-1">Customer: {order.customerPhone}</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  Customer: {group.phone}
+                  {group.orders.length > 1 && <span className="ml-1 text-amber-600">({group.orders.length} orders)</span>}
+                </div>
                 <div className="text-xs text-gray-600 mb-2">
-                  {order.items.slice(0, 3).map(i => `${i.qty}x ${i.name}`).join(', ')}
-                  {order.items.length > 3 && ` +${order.items.length - 3} more`}
+                  {group.allItems.slice(0, 3).map(i => `${i.qty}x ${i.name}`).join(', ')}
+                  {group.allItems.length > 3 && ` +${group.allItems.length - 3} more`}
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
                     className="flex-1 h-8 text-xs bg-gradient-to-r from-emerald-500 to-emerald-600 text-white"
-                    onClick={() => handleAccept(order)}
+                    onClick={() => handleAcceptGroup(group)}
                   >
-                    <Check className="w-3 h-3 mr-1" /> Accept
+                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}
                   </Button>
                   <Button 
                     size="sm" 
                     className="h-8 text-xs bg-gradient-to-r from-red-500 to-red-600 text-white"
-                    onClick={() => handleReject(order.id)}
+                    onClick={() => handleRejectGroup(group)}
                   >
                     <X className="w-3 h-3" />
                   </Button>
@@ -662,9 +726,9 @@ export default function Counter() {
               <p>No pending orders</p>
             </div>
           ) : (
-            pendingOrders.map(order => (
+            pendingOrders.map(group => (
               <div 
-                key={order.id} 
+                key={group.key} 
                 className="rounded-xl p-4 animate-slide-up relative overflow-hidden group transition-all duration-300 hover:scale-[1.02]"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
@@ -674,32 +738,35 @@ export default function Counter() {
               >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-orange-500 rounded-l-xl" />
                 <div className="flex justify-between font-bold mb-1 border-b border-dashed border-gray-200 pb-2 text-gray-800">
-                  <span className="text-lg">Table {order.tableNumber}</span>
-                  <span className="text-sm font-normal text-gray-500">{formatNepalTime(order.createdAt)}</span>
+                  <span className="text-lg">Table {group.tableNumber}</span>
+                  <span className="text-sm font-normal text-gray-500">{formatNepalTime(group.createdAt)}</span>
                 </div>
                 <div className="text-sm text-gray-500 italic mb-2">
-                  Customer: {order.customerPhone}
+                  Customer: {group.phone}
+                  {group.orders.length > 1 && <span className="ml-2 text-amber-600 font-medium not-italic">({group.orders.length} orders combined)</span>}
                 </div>
                 <div className="text-sm mb-3 space-y-1">
-                  {order.items.map((item, idx) => (
+                  {group.allItems.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-gray-700">
                       <span className="font-medium">{item.qty}x {item.name}</span>
                     </div>
                   ))}
                 </div>
-                <div className="text-xs text-gray-400 mb-3">ID: #{order.id.slice(-6)}</div>
+                <div className="text-xs text-gray-400 mb-3">
+                  ID: #{group.orders.map(o => o.id.slice(-6)).join(', #')}
+                </div>
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
                     className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/30"
-                    onClick={() => handleAccept(order)}
+                    onClick={() => handleAcceptGroup(group)}
                   >
-                    <Check className="w-3 h-3 mr-1" /> Accept & Print
+                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''} & Print
                   </Button>
                   <Button 
                     size="sm" 
                     className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg shadow-red-500/30"
-                    onClick={() => handleReject(order.id)}
+                    onClick={() => handleRejectGroup(group)}
                   >
                     <X className="w-3 h-3" />
                   </Button>
