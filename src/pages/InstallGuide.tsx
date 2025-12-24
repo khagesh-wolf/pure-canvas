@@ -311,21 +311,6 @@ export default function InstallGuide() {
             </div>
           </div>
         )}
-
-        {/* Already installed helper */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-500 text-sm mb-3">Already added to home screen?</p>
-          <button
-            onClick={() => {
-              localStorage.setItem('chiyadani:pwaInstalled', 'true');
-              navigate('/scan');
-            }}
-            className="text-amber-400 text-sm font-medium underline underline-offset-4"
-          >
-            I've already installed it →
-          </button>
-        </div>
-
         {/* Bottom spacing */}
         <div className="h-20" />
       </div>
