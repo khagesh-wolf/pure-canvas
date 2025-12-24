@@ -4,7 +4,7 @@ import { useStore } from '@/store/useStore';
 import { Order, OrderStatus } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Clock, ChefHat, Bell, CheckCircle, LogOut, Coffee, RefreshCw } from 'lucide-react';
+import { Check, X, Clock, ChefHat, Bell, CheckCircle, LogOut, Coffee, RefreshCw, MonitorDot } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalTime, formatNepalDateTime } from '@/lib/nepalTime';
 
@@ -69,6 +69,15 @@ export default function Kitchen() {
               </span>
             )}
             <span className="text-xs text-muted-foreground hidden lg:block">{formatNepalDateTime(new Date())}</span>
+            <Button 
+              variant="outline" 
+              size="icon"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg"
+              onClick={() => navigate('/counter')}
+              title="Go to Counter"
+            >
+              <MonitorDot className="w-4 h-4" />
+            </Button>
             <Button 
               variant="ghost" 
               size="icon"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Loader2, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, RefreshCw, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface FonepayQRProps {
   amount: number;
@@ -81,12 +82,8 @@ export default function FonepayQR({ amount, orderId, onSuccess, onCancel }: Fone
     const qrString = JSON.stringify(qrPayload);
     const encodedData = btoa(qrString);
     
-    // Use a QR code generator API (using a public service for demo)
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-      `fonepay://pay?data=${encodedData}`
-    )}`;
-    
-    setQrData(qrUrl);
+    // Store the fonepay URL for QR code generation
+    setQrData(`fonepay://pay?data=${encodedData}`);
     setStatus('ready');
     setCountdown(180);
   };
@@ -129,17 +126,10 @@ export default function FonepayQR({ amount, orderId, onSuccess, onCancel }: Fone
       {/* Header */}
       <div className="text-center mb-4">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <img 
-            src="https://fonepay.com/images/fonepay-logo.png" 
-            alt="Fonepay" 
-            className="h-8"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+          <Smartphone className="h-8 w-8 text-[#E31837]" />
           <span className="text-xl font-bold text-[#E31837]">Fonepay</span>
         </div>
-        <p className="text-sm text-[#666]">Scan QR to pay securely</p>
+        <p className="text-sm text-muted-foreground">Scan QR to pay securely</p>
       </div>
 
       {/* QR Section */}
@@ -152,11 +142,14 @@ export default function FonepayQR({ amount, orderId, onSuccess, onCancel }: Fone
 
         {status === 'ready' && qrData && (
           <>
-            <img 
-              src={qrData} 
-              alt="Fonepay QR Code" 
-              className="w-[250px] h-[250px]"
-            />
+            <div className="w-[250px] h-[250px] flex items-center justify-center">
+              <QRCodeSVG 
+                value={qrData} 
+                size={250}
+                level="M"
+                includeMargin={true}
+              />
+            </div>
             <div className="absolute top-2 right-2">
               <Button 
                 variant="ghost" 

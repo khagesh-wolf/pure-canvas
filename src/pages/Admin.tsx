@@ -10,13 +10,14 @@ import {
   Plus, Edit, Trash2, LogOut, Settings, LayoutDashboard, 
   UtensilsCrossed, Users, QrCode, History, TrendingUp, ShoppingBag, DollarSign,
   Download, Search, Eye, UserCog, BarChart3, Calendar, Image as ImageIcon, ToggleLeft, ToggleRight,
-  Check, X, Menu as MenuIcon
+  Check, X, Menu as MenuIcon, MonitorDot
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { formatNepalDateTime, formatNepalDateReadable, getNepalTodayString, getNepalDateDaysAgo, getTransactionDateInNepal } from '@/lib/nepalTime';
 import { QRCodeSVG } from 'qrcode.react';
+import { generatePrintQRData } from '@/lib/qrGenerator';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import {
   validateInput,
@@ -493,27 +494,44 @@ export default function Admin() {
   };
 
   const printAllQR = () => {
-    const wifiQRData = settings.wifiSSID 
-      ? `WIFI:T:WPA;S:${settings.wifiSSID};P:${settings.wifiPassword};;`
-      : '';
-
-    // Build table data
-    const tables: { num: number; url: string }[] = [];
-    for (let i = 1; i <= settings.tableCount; i++) {
-      tables.push({
-        num: i,
-        url: `${settings.baseUrl || window.location.origin}/table/${i}`
-      });
-    }
+    const wifiSSID = settings.wifiSSID || '';
+    const wifiPassword = settings.wifiPassword || '';
+    const baseUrl = settings.baseUrl || window.location.origin;
+    
+    // Generate QR codes offline using our bundled library
+    const qrData = generatePrintQRData(
+      settings.tableCount,
+      baseUrl,
+      wifiSSID || undefined,
+      wifiPassword || undefined
+    );
 
     toast.info('Opening print preview...');
 
-    // Open print window with QR library loaded via CDN
+    // Open print window with pre-generated QR codes (no external dependencies)
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error('Please allow popups to print QR codes');
       return;
     }
+
+    // Build cards HTML with embedded SVG QR codes
+    const cardsHTML = qrData.map(data => `
+      <div class="card">
+        <div class="wifi-section">
+          <div class="wifi-label">📶 Free WiFi</div>
+          ${data.wifiQR 
+            ? `<div class="qr-container">${data.wifiQR}</div><div class="wifi-ssid">${wifiSSID}</div>` 
+            : '<div class="no-wifi">No WiFi configured</div>'
+          }
+        </div>
+        <div class="table-section">
+          <div class="table-label">🍵 Table ${data.tableNum}</div>
+          <div class="qr-container">${data.tableQR}</div>
+          <div class="restaurant-name">${settings.restaurantName}</div>
+        </div>
+      </div>
+    `).join('');
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -542,132 +560,22 @@ export default function Admin() {
           .wifi-ssid { font-size: 9px; color: #666; margin-top: 6px; }
           .table-label { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 8px; }
           .restaurant-name { font-size: 10px; color: #666; margin-top: 8px; }
-          .qr-container { width: 120px; height: 120px; margin: 0 auto; }
-          .qr-container canvas { width: 100% !important; height: 100% !important; }
+          .qr-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+          .qr-container svg { width: 100%; height: 100%; }
           .no-wifi { width: 120px; height: 120px; background: #f5f5f5; margin: 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 10px; color: #999; }
-          .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
           @media print { 
             body { padding: 10px; background: white; } 
             .card { box-shadow: none; border: 1px solid #ccc; }
-            .loading { display: none; }
           }
         </style>
       </head>
       <body>
-        <div class="loading" id="loading">Loading QR codes...</div>
-        <div class="header" style="display:none" id="mainContent">
+        <div class="header">
           <h1>${settings.restaurantName}</h1>
           <p>Table QR Cards</p>
         </div>
-        <div class="cards-grid" id="cards" style="display:none"></div>
-        <script>
-          const tables = ${JSON.stringify(tables)};
-          const wifiData = ${JSON.stringify(wifiQRData)};
-          const wifiSSID = ${JSON.stringify(settings.wifiSSID || '')};
-          const restaurantName = ${JSON.stringify(settings.restaurantName)};
-          
-          function loadQRScript() {
-            return new Promise((resolve, reject) => {
-              const script = document.createElement('script');
-              script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-              script.onload = () => resolve();
-              script.onerror = () => {
-                // Try alternative CDN
-                const altScript = document.createElement('script');
-                altScript.src = 'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
-                altScript.onload = () => resolve();
-                altScript.onerror = () => reject(new Error('Failed to load QRCode library'));
-                document.head.appendChild(altScript);
-              };
-              document.head.appendChild(script);
-            });
-          }
-          
-          async function generateCards() {
-            const container = document.getElementById('cards');
-            const qrElements = [];
-            
-            for (const table of tables) {
-              const card = document.createElement('div');
-              card.className = 'card';
-              
-              // WiFi section
-              const wifiSection = document.createElement('div');
-              wifiSection.className = 'wifi-section';
-              const wifiLabel = document.createElement('div');
-              wifiLabel.className = 'wifi-label';
-              wifiLabel.textContent = '📶 Free WiFi';
-              wifiSection.appendChild(wifiLabel);
-              
-              let wifiCanvas = null;
-              if (wifiData) {
-                const wifiQRContainer = document.createElement('div');
-                wifiQRContainer.className = 'qr-container';
-                wifiCanvas = document.createElement('canvas');
-                wifiQRContainer.appendChild(wifiCanvas);
-                wifiSection.appendChild(wifiQRContainer);
-                const wifiSsidDiv = document.createElement('div');
-                wifiSsidDiv.className = 'wifi-ssid';
-                wifiSsidDiv.textContent = wifiSSID;
-                wifiSection.appendChild(wifiSsidDiv);
-              } else {
-                const noWifiDiv = document.createElement('div');
-                noWifiDiv.className = 'no-wifi';
-                noWifiDiv.textContent = 'No WiFi configured';
-                wifiSection.appendChild(noWifiDiv);
-              }
-              card.appendChild(wifiSection);
-              
-              // Table section
-              const tableSection = document.createElement('div');
-              const tableLabel = document.createElement('div');
-              tableLabel.className = 'table-label';
-              tableLabel.textContent = '🍵 Table ' + table.num;
-              tableSection.appendChild(tableLabel);
-              const tableQRContainer = document.createElement('div');
-              tableQRContainer.className = 'qr-container';
-              const tableCanvas = document.createElement('canvas');
-              tableQRContainer.appendChild(tableCanvas);
-              tableSection.appendChild(tableQRContainer);
-              const restaurantNameDiv = document.createElement('div');
-              restaurantNameDiv.className = 'restaurant-name';
-              restaurantNameDiv.textContent = restaurantName;
-              tableSection.appendChild(restaurantNameDiv);
-              card.appendChild(tableSection);
-              
-              container.appendChild(card);
-              
-              // Store references for QR generation
-              qrElements.push({ wifiCanvas, tableCanvas, tableUrl: table.url });
-            }
-            
-            // Generate QR codes using stored canvas references
-            for (const el of qrElements) {
-              try {
-                if (wifiData && el.wifiCanvas) {
-                  await QRCode.toCanvas(el.wifiCanvas, wifiData, { width: 120, margin: 1 });
-                }
-                await QRCode.toCanvas(el.tableCanvas, el.tableUrl, { width: 120, margin: 1 });
-              } catch (err) {
-                console.error('QR generation error:', err);
-              }
-            }
-            
-            // Show content and auto-print after generation
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('mainContent').style.display = 'block';
-            document.getElementById('cards').style.display = 'flex';
-            setTimeout(() => window.print(), 500);
-          }
-          
-          // Load QRCode library then generate cards
-          loadQRScript()
-            .then(() => generateCards())
-            .catch(err => {
-              document.getElementById('loading').textContent = 'Error: Failed to load QR code library. Please check your internet connection.';
-              console.error(err);
-            });
-        <\/script>
+        <div class="cards-grid">${cardsHTML}</div>
+        <script>setTimeout(() => window.print(), 300);<\/script>
       </body>
       </html>
     `);
@@ -695,14 +603,27 @@ export default function Admin() {
           </div>
           <span className="font-serif font-bold">{settings.restaurantName}</span>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="text-sidebar-foreground"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          {tab !== 'settings' && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-sidebar-foreground"
+              onClick={() => navigate('/counter')}
+              title="Go to Counter"
+            >
+              <MonitorDot className="w-5 h-5" />
+            </Button>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="text-sidebar-foreground"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -773,6 +694,15 @@ export default function Admin() {
             <h1 className="font-serif text-xl md:text-2xl font-bold text-foreground">{navItems.find(n => n.id === tab)?.label}</h1>
             <p className="text-xs md:text-sm text-muted-foreground mt-1">{formatNepalDateTime(new Date())}</p>
           </div>
+          {tab !== 'settings' && (
+            <Button 
+              variant="outline"
+              className="hidden lg:flex items-center gap-2"
+              onClick={() => navigate('/counter')}
+            >
+              <MonitorDot className="w-4 h-4" /> Counter
+            </Button>
+          )}
         </div>
         <div className="flex-1">
 
