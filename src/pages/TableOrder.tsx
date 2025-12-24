@@ -828,15 +828,17 @@ export default function TableOrder() {
           <>
             <button
               onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(10);
                 setBillModalOpen(true);
                 setFabOpen(false);
               }}
-              className="flex items-center gap-2 bg-white border border-[#eee] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#333] animate-fade-in"
+              className="flex items-center gap-2 bg-white border border-[#eee] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#333] fab-item-1"
             >
               <FileText className="w-4 h-4" /> My Bill
             </button>
             <button
               onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(10);
                 const hasPendingCall = waiterCalls.some(
                   c => c.tableNumber === table && c.status === 'pending'
                 );
@@ -848,15 +850,16 @@ export default function TableOrder() {
                 }
                 setFabOpen(false);
               }}
-              className="flex items-center gap-2 bg-[#fff8e1] border border-[#ffe0b2] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#f39c12] animate-fade-in"
+              className="flex items-center gap-2 bg-[#fff8e1] border border-[#ffe0b2] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#f39c12] fab-item-2"
             >
               <Bell className="w-4 h-4" /> Call Waiter
             </button>
             <button
               onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(10);
                 window.location.reload();
               }}
-              className="flex items-center gap-2 bg-white border border-[#eee] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#333] animate-fade-in"
+              className="flex items-center gap-2 bg-white border border-[#eee] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#333] fab-item-3"
             >
               <RefreshCw className="w-4 h-4" /> Refresh App
             </button>
@@ -865,7 +868,10 @@ export default function TableOrder() {
         
         {/* FAB Toggle Button */}
         <button
-          onClick={() => setFabOpen(!fabOpen)}
+          onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(15);
+            setFabOpen(!fabOpen);
+          }}
           className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
             fabOpen 
               ? 'bg-[#333] text-white rotate-45' 
@@ -902,6 +908,30 @@ export default function TableOrder() {
         @keyframes popIn {
           0% { transform: scale(0); }
           100% { transform: scale(1); }
+        }
+        @keyframes fab-slide-in {
+          0% { 
+            opacity: 0; 
+            transform: translateX(20px) scale(0.8); 
+          }
+          100% { 
+            opacity: 1; 
+            transform: translateX(0) scale(1); 
+          }
+        }
+        .fab-item-1 {
+          animation: fab-slide-in 0.2s ease-out forwards;
+          animation-delay: 0ms;
+        }
+        .fab-item-2 {
+          animation: fab-slide-in 0.2s ease-out forwards;
+          animation-delay: 50ms;
+          opacity: 0;
+        }
+        .fab-item-3 {
+          animation: fab-slide-in 0.2s ease-out forwards;
+          animation-delay: 100ms;
+          opacity: 0;
         }
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
