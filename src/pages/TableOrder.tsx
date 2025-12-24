@@ -668,11 +668,9 @@ export default function TableOrder() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <img 
-                          src={`https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200&auto=format&fit=crop`}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="w-full h-full flex items-center justify-center bg-muted/50">
+                          <span className="text-xs text-muted-foreground font-medium">No Image</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -759,11 +757,9 @@ export default function TableOrder() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <img 
-                          src={`https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200&auto=format&fit=crop`}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="w-full h-full flex items-center justify-center bg-muted/50">
+                          <span className="text-xs text-muted-foreground font-medium">No Image</span>
+                        </div>
                       )}
                     </div>
                   </div>
