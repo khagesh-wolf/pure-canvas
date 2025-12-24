@@ -17,9 +17,20 @@ import { billsApi, customersApi, ordersApi, menuApi, settingsApi, expensesApi, w
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
 
-// All actions sync to backend
-const syncToBackend = (fn: () => Promise<unknown>) => {
-  fn().catch((err) => console.error('[Store] Backend sync failed:', err));
+// All actions sync to backend with retry logic
+const syncToBackend = async (fn: () => Promise<unknown>, retries = 2) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      console.error(`[Store] Backend sync failed (attempt ${attempt + 1}/${retries + 1}):`, err);
+      if (attempt < retries) {
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+  }
 };
 
 const defaultSettings: Settings = {

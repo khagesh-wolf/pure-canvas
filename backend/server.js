@@ -403,13 +403,34 @@ app.get('/api/transactions', (req, res) => {
 });
 
 app.post('/api/transactions', (req, res) => {
-  const { id, billId, tableNumber, customerPhones, total, discount, paymentMethod, paidAt, items } = req.body;
-  runQuery(`
-    INSERT INTO transactions (id, bill_id, table_number, customer_phones, total, discount, payment_method, paid_at, items)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, billId, tableNumber, JSON.stringify(customerPhones), total, discount || 0, paymentMethod, paidAt, JSON.stringify(items)]);
-  broadcast('TRANSACTION_UPDATE', { action: 'add', transaction: req.body });
-  res.json({ success: true });
+  try {
+    const { id, billId, tableNumber, customerPhones, total, discount, paymentMethod, paidAt, items } = req.body;
+    
+    // Validate required fields
+    if (!id || !billId || tableNumber === undefined || !paymentMethod || !paidAt) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    runQuery(`
+      INSERT INTO transactions (id, bill_id, table_number, customer_phones, total, discount, payment_method, paid_at, items)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, 
+      billId, 
+      tableNumber, 
+      JSON.stringify(customerPhones || []), 
+      total || 0, 
+      discount || 0, 
+      paymentMethod, 
+      paidAt, 
+      JSON.stringify(items || [])
+    ]);
+    broadcast('TRANSACTION_UPDATE', { action: 'add', transaction: req.body });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API] Transaction creation error:', error);
+    res.status(500).json({ message: 'Failed to create transaction' });
+  }
 });
 
 // ============ CUSTOMERS ============
