@@ -16,7 +16,8 @@ import {
   Wallet,
   Plus,
   Trash2,
-  Bell
+  Bell,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalTime, formatNepalDateTime } from '@/lib/nepalTime';
@@ -577,6 +578,11 @@ export default function Counter() {
             <Button variant="outline" onClick={() => window.location.reload()}>
               <RefreshCw className="w-4 h-4" />
             </Button>
+            {settings.counterAsAdmin && (
+              <Button variant="outline" onClick={() => navigate('/admin')} className="bg-primary/10 border-primary text-primary hover:bg-primary/20">
+                <Settings className="w-4 h-4 mr-2" /> Admin Panel
+              </Button>
+            )}
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" /> Logout
             </Button>
