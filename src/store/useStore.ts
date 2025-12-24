@@ -14,7 +14,7 @@ import {
   WaiterCall,
 } from '@/types';
 import { getNepalTimestamp, isToday } from '@/lib/nepalTime';
-import { billsApi, customersApi, ordersApi } from '@/lib/apiClient';
+import { billsApi, customersApi, ordersApi, menuApi, settingsApi, expensesApi, waiterCallsApi, staffApi } from '@/lib/apiClient';
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
 
@@ -171,29 +171,49 @@ export const useStore = create<StoreState>()(
       // Menu
       menuItems: defaultMenuItems,
 
-      addMenuItem: (item) => set((state) => ({
-        menuItems: [...state.menuItems, { ...item, id: generateId() }]
-      })),
+      addMenuItem: (item) => {
+        const newItem = { ...item, id: generateId() };
+        set((state) => ({ menuItems: [...state.menuItems, newItem] }));
+        safeSync(() => menuApi.create(newItem));
+      },
 
-      updateMenuItem: (id, item) => set((state) => ({
-        menuItems: state.menuItems.map(m => m.id === id ? { ...m, ...item } : m)
-      })),
+      updateMenuItem: (id, item) => {
+        set((state) => ({
+          menuItems: state.menuItems.map(m => m.id === id ? { ...m, ...item } : m)
+        }));
+        const updated = { id, ...item };
+        safeSync(() => menuApi.update(id, updated));
+      },
 
-      deleteMenuItem: (id) => set((state) => ({
-        menuItems: state.menuItems.filter(m => m.id !== id)
-      })),
+      deleteMenuItem: (id) => {
+        set((state) => ({ menuItems: state.menuItems.filter(m => m.id !== id) }));
+        safeSync(() => menuApi.delete(id));
+      },
 
-      toggleItemAvailability: (id) => set((state) => ({
-        menuItems: state.menuItems.map(m =>
-          m.id === id ? { ...m, available: !m.available } : m
-        )
-      })),
+      toggleItemAvailability: (id) => {
+        const item = get().menuItems.find(m => m.id === id);
+        if (!item) return;
+        const newAvailable = !item.available;
+        set((state) => ({
+          menuItems: state.menuItems.map(m =>
+            m.id === id ? { ...m, available: newAvailable } : m
+          )
+        }));
+        safeSync(() => menuApi.update(id, { ...item, available: newAvailable }));
+      },
 
-      bulkToggleAvailability: (ids, available) => set((state) => ({
-        menuItems: state.menuItems.map(m =>
-          ids.includes(m.id) ? { ...m, available } : m
-        )
-      })),
+      bulkToggleAvailability: (ids, available) => {
+        set((state) => ({
+          menuItems: state.menuItems.map(m =>
+            ids.includes(m.id) ? { ...m, available } : m
+          )
+        }));
+        // Sync each item to backend
+        const items = get().menuItems.filter(m => ids.includes(m.id));
+        items.forEach(item => {
+          safeSync(() => menuApi.update(item.id, { ...item, available }));
+        });
+      },
 
       // Orders
       orders: [],
@@ -379,35 +399,48 @@ export const useStore = create<StoreState>()(
       // Staff
       staff: defaultStaff,
 
-      addStaff: (staffData) => set((state) => ({
-        staff: [...state.staff, { ...staffData, id: generateId(), createdAt: getNepalTimestamp() }]
-      })),
+      addStaff: (staffData) => {
+        const newStaff = { ...staffData, id: generateId(), createdAt: getNepalTimestamp() };
+        set((state) => ({ staff: [...state.staff, newStaff] }));
+        safeSync(() => staffApi.create(newStaff));
+      },
 
-      updateStaff: (id, staffData) => set((state) => ({
-        staff: state.staff.map(s => s.id === id ? { ...s, ...staffData } : s)
-      })),
+      updateStaff: (id, staffData) => {
+        set((state) => ({
+          staff: state.staff.map(s => s.id === id ? { ...s, ...staffData } : s)
+        }));
+        safeSync(() => staffApi.update(id, staffData));
+      },
 
-      deleteStaff: (id) => set((state) => ({
-        staff: state.staff.filter(s => s.id !== id)
-      })),
+      deleteStaff: (id) => {
+        set((state) => ({ staff: state.staff.filter(s => s.id !== id) }));
+        safeSync(() => staffApi.delete(id));
+      },
 
       // Settings
       settings: defaultSettings,
 
-      updateSettings: (newSettings) => set((state) => ({
-        settings: { ...state.settings, ...newSettings }
-      })),
+      updateSettings: (newSettings) => {
+        set((state) => ({
+          settings: { ...state.settings, ...newSettings }
+        }));
+        const updated = { ...get().settings, ...newSettings };
+        safeSync(() => settingsApi.update(updated));
+      },
 
       // Expenses
       expenses: [],
 
-      addExpense: (expense) => set((state) => ({
-        expenses: [...state.expenses, { ...expense, id: generateId(), createdAt: getNepalTimestamp() }]
-      })),
+      addExpense: (expense) => {
+        const newExpense = { ...expense, id: generateId(), createdAt: getNepalTimestamp() };
+        set((state) => ({ expenses: [...state.expenses, newExpense] }));
+        safeSync(() => expensesApi.create(newExpense));
+      },
 
-      deleteExpense: (id) => set((state) => ({
-        expenses: state.expenses.filter(e => e.id !== id)
-      })),
+      deleteExpense: (id) => {
+        set((state) => ({ expenses: state.expenses.filter(e => e.id !== id) }));
+        safeSync(() => expensesApi.delete(id));
+      },
 
       getExpensesByDateRange: (start, end) => {
         return get().expenses.filter(e => {
@@ -434,17 +467,22 @@ export const useStore = create<StoreState>()(
           createdAt: getNepalTimestamp(),
         };
         set((state) => ({ waiterCalls: [...state.waiterCalls, newCall] }));
+        safeSync(() => waiterCallsApi.create(newCall));
       },
 
-      acknowledgeWaiterCall: (id) => set((state) => ({
-        waiterCalls: state.waiterCalls.map(c =>
-          c.id === id ? { ...c, status: 'acknowledged' as const, acknowledgedAt: getNepalTimestamp() } : c
-        )
-      })),
+      acknowledgeWaiterCall: (id) => {
+        set((state) => ({
+          waiterCalls: state.waiterCalls.map(c =>
+            c.id === id ? { ...c, status: 'acknowledged' as const, acknowledgedAt: getNepalTimestamp() } : c
+          )
+        }));
+        safeSync(() => waiterCallsApi.acknowledge(id));
+      },
 
-      dismissWaiterCall: (id) => set((state) => ({
-        waiterCalls: state.waiterCalls.filter(c => c.id !== id)
-      })),
+      dismissWaiterCall: (id) => {
+        set((state) => ({ waiterCalls: state.waiterCalls.filter(c => c.id !== id) }));
+        safeSync(() => waiterCallsApi.dismiss(id));
+      },
 
       getPendingWaiterCalls: () => get().waiterCalls.filter(c => c.status === 'pending'),
 
