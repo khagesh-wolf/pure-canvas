@@ -559,6 +559,7 @@ export default function Admin() {
           
           async function generateCards() {
             const container = document.getElementById('cards');
+            const qrElements = [];
             
             for (const table of tables) {
               const card = document.createElement('div');
@@ -567,13 +568,18 @@ export default function Admin() {
               // WiFi section
               const wifiSection = document.createElement('div');
               wifiSection.className = 'wifi-section';
-              wifiSection.innerHTML = '<div class="wifi-label">📶 Free WiFi</div>';
+              const wifiLabel = document.createElement('div');
+              wifiLabel.className = 'wifi-label';
+              wifiLabel.textContent = '📶 Free WiFi';
+              wifiSection.appendChild(wifiLabel);
               
+              let wifiCanvas = null;
               if (wifiData) {
-                const wifiQR = document.createElement('div');
-                wifiQR.className = 'qr-container';
-                wifiQR.id = 'wifi-' + table.num;
-                wifiSection.appendChild(wifiQR);
+                const wifiQRContainer = document.createElement('div');
+                wifiQRContainer.className = 'qr-container';
+                wifiCanvas = document.createElement('canvas');
+                wifiQRContainer.appendChild(wifiCanvas);
+                wifiSection.appendChild(wifiQRContainer);
                 const wifiSsidDiv = document.createElement('div');
                 wifiSsidDiv.className = 'wifi-ssid';
                 wifiSsidDiv.textContent = wifiSSID;
@@ -592,10 +598,11 @@ export default function Admin() {
               tableLabel.className = 'table-label';
               tableLabel.textContent = '🍵 Table ' + table.num;
               tableSection.appendChild(tableLabel);
-              const tableQR = document.createElement('div');
-              tableQR.className = 'qr-container';
-              tableQR.id = 'table-' + table.num;
-              tableSection.appendChild(tableQR);
+              const tableQRContainer = document.createElement('div');
+              tableQRContainer.className = 'qr-container';
+              const tableCanvas = document.createElement('canvas');
+              tableQRContainer.appendChild(tableCanvas);
+              tableSection.appendChild(tableQRContainer);
               const restaurantNameDiv = document.createElement('div');
               restaurantNameDiv.className = 'restaurant-name';
               restaurantNameDiv.textContent = restaurantName;
@@ -603,14 +610,21 @@ export default function Admin() {
               card.appendChild(tableSection);
               
               container.appendChild(card);
+              
+              // Store references for QR generation
+              qrElements.push({ wifiCanvas, tableCanvas, tableUrl: table.url });
             }
             
-            // Generate QR codes
-            for (const table of tables) {
-              if (wifiData) {
-                await QRCode.toCanvas(document.querySelector('#wifi-' + table.num), wifiData, { width: 120, margin: 1 });
+            // Generate QR codes using stored canvas references
+            for (const el of qrElements) {
+              try {
+                if (wifiData && el.wifiCanvas) {
+                  await QRCode.toCanvas(el.wifiCanvas, wifiData, { width: 120, margin: 1 });
+                }
+                await QRCode.toCanvas(el.tableCanvas, el.tableUrl, { width: 120, margin: 1 });
+              } catch (err) {
+                console.error('QR generation error:', err);
               }
-              await QRCode.toCanvas(document.querySelector('#table-' + table.num), table.url, { width: 120, margin: 1 });
             }
             
             // Auto-print after generation
