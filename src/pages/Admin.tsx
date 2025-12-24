@@ -574,20 +574,32 @@ export default function Admin() {
                 wifiQR.className = 'qr-container';
                 wifiQR.id = 'wifi-' + table.num;
                 wifiSection.appendChild(wifiQR);
-                wifiSection.innerHTML += '<div class="wifi-ssid">' + wifiSSID + '</div>';
+                const wifiSsidDiv = document.createElement('div');
+                wifiSsidDiv.className = 'wifi-ssid';
+                wifiSsidDiv.textContent = wifiSSID;
+                wifiSection.appendChild(wifiSsidDiv);
               } else {
-                wifiSection.innerHTML += '<div class="no-wifi">No WiFi configured</div>';
+                const noWifiDiv = document.createElement('div');
+                noWifiDiv.className = 'no-wifi';
+                noWifiDiv.textContent = 'No WiFi configured';
+                wifiSection.appendChild(noWifiDiv);
               }
               card.appendChild(wifiSection);
               
               // Table section
               const tableSection = document.createElement('div');
-              tableSection.innerHTML = '<div class="table-label">🍵 Table ' + table.num + '</div>';
+              const tableLabel = document.createElement('div');
+              tableLabel.className = 'table-label';
+              tableLabel.textContent = '🍵 Table ' + table.num;
+              tableSection.appendChild(tableLabel);
               const tableQR = document.createElement('div');
               tableQR.className = 'qr-container';
               tableQR.id = 'table-' + table.num;
               tableSection.appendChild(tableQR);
-              tableSection.innerHTML += '<div class="restaurant-name">' + restaurantName + '</div>';
+              const restaurantNameDiv = document.createElement('div');
+              restaurantNameDiv.className = 'restaurant-name';
+              restaurantNameDiv.textContent = restaurantName;
+              tableSection.appendChild(restaurantNameDiv);
               card.appendChild(tableSection);
               
               container.appendChild(card);

@@ -39,6 +39,7 @@ const defaultSettings: Settings = {
   wifiSSID: '',
   wifiPassword: '',
   baseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+  counterAsAdmin: false,
 };
 
 const defaultStaff: Staff[] = [
