@@ -170,11 +170,13 @@ export const useStore = create<StoreState>()((set, get) => ({
   },
 
   updateMenuItem: (id, item) => {
+    const currentItem = get().menuItems.find(m => m.id === id);
+    if (!currentItem) return;
+    const updatedItem = { ...currentItem, ...item };
     set((state) => ({
-      menuItems: state.menuItems.map(m => m.id === id ? { ...m, ...item } : m)
+      menuItems: state.menuItems.map(m => m.id === id ? updatedItem : m)
     }));
-    const updated = { id, ...item };
-    syncToBackend(() => menuApi.update(id, updated));
+    syncToBackend(() => menuApi.update(id, updatedItem));
   },
 
   deleteMenuItem: (id) => {
@@ -185,13 +187,13 @@ export const useStore = create<StoreState>()((set, get) => ({
   toggleItemAvailability: (id) => {
     const item = get().menuItems.find(m => m.id === id);
     if (!item) return;
-    const newAvailable = !item.available;
+    const updatedItem = { ...item, available: !item.available };
     set((state) => ({
       menuItems: state.menuItems.map(m =>
-        m.id === id ? { ...m, available: newAvailable } : m
+        m.id === id ? updatedItem : m
       )
     }));
-    syncToBackend(() => menuApi.update(id, { ...item, available: newAvailable }));
+    syncToBackend(() => menuApi.update(id, updatedItem));
   },
 
   bulkToggleAvailability: (ids, available) => {
