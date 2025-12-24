@@ -49,38 +49,39 @@ export default function Kitchen() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="page-header px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 gradient-primary rounded-2xl flex items-center justify-center shadow-warm">
-              <ChefHat className="w-6 h-6 text-primary-foreground" />
+      <header className="page-header px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 gradient-primary rounded-xl sm:rounded-2xl flex items-center justify-center shadow-warm">
+              <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-serif text-xl font-bold text-foreground">{settings.restaurantName}</h1>
-              <p className="text-sm text-muted-foreground">Kitchen Display</p>
+              <h1 className="font-serif text-base sm:text-xl font-bold text-foreground">{settings.restaurantName}</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Kitchen Display</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          
+          <div className="flex items-center gap-2 ml-auto">
             {pendingCount > 0 && (
-              <span className="pill bg-warning/15 text-warning border border-warning/20 animate-pulse-soft">
-                <Clock className="w-3.5 h-3.5" />
-                {pendingCount} pending
+              <span className="pill bg-warning/15 text-warning border border-warning/20 animate-pulse-soft text-xs sm:text-sm">
+                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                {pendingCount}
               </span>
             )}
-            <span className="text-sm text-muted-foreground hidden md:block">{formatNepalDateTime(new Date())}</span>
+            <span className="text-xs text-muted-foreground hidden lg:block">{formatNepalDateTime(new Date())}</span>
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="icon"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg"
               onClick={() => window.location.reload()}
-              className="rounded-lg"
             >
               <RefreshCw className="w-4 h-4" />
             </Button>
             <Button 
               variant="outline" 
-              size="sm" 
+              size="icon"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg"
               onClick={handleLogout}
-              className="rounded-lg"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -88,9 +89,9 @@ export default function Kitchen() {
         </div>
       </header>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        <div className="flex gap-2 mb-4 sm:mb-6 flex-wrap">
           <FilterTab 
             label="All Orders" 
             count={activeOrders.length} 
@@ -115,15 +116,15 @@ export default function Kitchen() {
 
         {/* Orders Grid */}
         {filteredOrders.length === 0 ? (
-          <div className="bg-card rounded-2xl border border-border p-16 text-center">
-            <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Coffee className="w-10 h-10 text-muted-foreground/50" />
+          <div className="bg-card rounded-2xl border border-border p-8 sm:p-16 text-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <Coffee className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/50" />
             </div>
-            <h3 className="font-serif text-2xl font-semibold text-muted-foreground mb-2">No active orders</h3>
-            <p className="text-muted-foreground/70">New orders will appear here automatically</p>
+            <h3 className="font-serif text-xl sm:text-2xl font-semibold text-muted-foreground mb-2">No active orders</h3>
+            <p className="text-sm sm:text-base text-muted-foreground/70">New orders will appear here automatically</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
             {filteredOrders.map((order, index) => (
               <div 
                 key={order.id} 
@@ -150,7 +151,7 @@ function FilterTab({
   label: string; count: number; active: boolean; onClick: () => void;
   variant?: 'default' | 'warning' | 'success';
 }) {
-  const baseClasses = "px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2";
+  const baseClasses = "px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 flex items-center gap-1 sm:gap-2";
   
   const variantClasses = {
     default: active 

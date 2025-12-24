@@ -520,74 +520,77 @@ export default function Counter() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Header - Responsive */}
+        {/* Header - Responsive: All in one row, wraps if needed */}
         <div className="bg-white p-3 md:p-5 shadow-sm">
-          {/* Top row: Title and actions */}
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <h2 className="text-lg md:text-xl font-bold m-0 whitespace-nowrap">Counter</h2>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Title */}
+            <h2 className="text-lg md:text-xl font-bold whitespace-nowrap mr-auto sm:mr-0">Counter</h2>
+            
+            {/* Tabs - inline with title */}
+            <div className="flex gap-1.5 overflow-x-auto order-last sm:order-none w-full sm:w-auto sm:flex-1 sm:justify-start mt-2 sm:mt-0 sm:ml-4">
+              <button 
+                onClick={() => setActiveTab('active')}
+                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === 'active' 
+                    ? 'bg-[#333] text-white' 
+                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                }`}
+              >
+                Active Bills
+              </button>
+              <button 
+                onClick={() => setActiveTab('accepted')}
+                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === 'accepted' 
+                    ? 'bg-[#333] text-white' 
+                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                }`}
+              >
+                Accepted
+              </button>
+              <button 
+                onClick={() => setActiveTab('history')}
+                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === 'history' 
+                    ? 'bg-[#333] text-white' 
+                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                }`}
+              >
+                History
+              </button>
+              <button 
+                onClick={() => setActiveTab('expenses')}
+                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all flex items-center gap-1 whitespace-nowrap flex-shrink-0 ${
+                  activeTab === 'expenses' 
+                    ? 'bg-[#333] text-white' 
+                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                }`}
+              >
+                <Wallet className="w-3 h-3" /> Expenses
+              </button>
+            </div>
+            
+            {/* Action buttons - stays in same row */}
+            <div className="flex items-center gap-1.5 ml-auto">
               <Input 
                 type="text"
                 placeholder="Search..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-24 md:w-48"
+                className="w-20 sm:w-32 md:w-40 h-8 text-sm"
               />
-              <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
-                <RefreshCw className="w-4 h-4" />
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.location.reload()}>
+                <RefreshCw className="w-3.5 h-3.5" />
               </Button>
               {settings.counterAsAdmin && (
-                <Button variant="outline" size="icon" onClick={() => navigate('/admin')} className="bg-primary/10 border-primary text-primary hover:bg-primary/20">
-                  <Settings className="w-4 h-4" />
+                <Button variant="outline" size="icon" className="h-8 w-8 bg-primary/10 border-primary text-primary hover:bg-primary/20" onClick={() => navigate('/admin')}>
+                  <Settings className="w-3.5 h-3.5" />
                 </Button>
               )}
-              <Button variant="outline" size="icon" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleLogout}>
+                <LogOut className="w-3.5 h-3.5" />
               </Button>
             </div>
-          </div>
-          {/* Tabs row - scrollable on mobile */}
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            <button 
-              onClick={() => setActiveTab('active')}
-              className={`px-3 md:px-5 py-2 rounded-full font-semibold text-xs md:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
-                activeTab === 'active' 
-                  ? 'bg-[#333] text-white' 
-                  : 'bg-white border border-[#ddd] text-[#555]'
-              }`}
-            >
-              Active Bills
-            </button>
-            <button 
-              onClick={() => setActiveTab('accepted')}
-              className={`px-3 md:px-5 py-2 rounded-full font-semibold text-xs md:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
-                activeTab === 'accepted' 
-                  ? 'bg-[#333] text-white' 
-                  : 'bg-white border border-[#ddd] text-[#555]'
-              }`}
-            >
-              Accepted
-            </button>
-            <button 
-              onClick={() => setActiveTab('history')}
-              className={`px-3 md:px-5 py-2 rounded-full font-semibold text-xs md:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
-                activeTab === 'history' 
-                  ? 'bg-[#333] text-white' 
-                  : 'bg-white border border-[#ddd] text-[#555]'
-              }`}
-            >
-              History
-            </button>
-            <button 
-              onClick={() => setActiveTab('expenses')}
-              className={`px-3 md:px-5 py-2 rounded-full font-semibold text-xs md:text-sm transition-all flex items-center gap-1 whitespace-nowrap flex-shrink-0 ${
-                activeTab === 'expenses' 
-                  ? 'bg-[#333] text-white' 
-                  : 'bg-white border border-[#ddd] text-[#555]'
-              }`}
-            >
-              <Wallet className="w-3 h-3 md:w-4 md:h-4" /> Expenses
-            </button>
           </div>
         </div>
 
