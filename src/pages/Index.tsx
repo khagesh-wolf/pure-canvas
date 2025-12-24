@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
 import { Coffee, User, ChefHat, CreditCard, Settings, TrendingUp, Users, ShoppingBag, ArrowRight, Sparkles } from 'lucide-react';
+import { BackendConfig } from '@/components/BackendConfig';
 import { formatNepalDateTime } from '@/lib/nepalTime';
 
 const modules = [
@@ -48,20 +49,23 @@ export default function Index() {
             </div>
           </div>
           
-          {isAuthenticated && currentUser ? (
-            <Link to={currentUser.role === 'admin' ? '/admin' : '/counter'}>
-              <Button variant="outline" className="rounded-xl border-border hover:bg-muted">
-                <User className="w-4 h-4 mr-2" />
-                {currentUser.name}
-              </Button>
-            </Link>
-          ) : (
-            <Link to="/auth">
-              <Button className="gradient-primary text-primary-foreground rounded-xl shadow-warm hover:opacity-90 transition-opacity">
-                <User className="w-4 h-4 mr-2" /> Staff Login
-              </Button>
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            <BackendConfig />
+            {isAuthenticated && currentUser ? (
+              <Link to={currentUser.role === 'admin' ? '/admin' : '/counter'}>
+                <Button variant="outline" className="rounded-xl border-border hover:bg-muted">
+                  <User className="w-4 h-4 mr-2" />
+                  {currentUser.name}
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/auth">
+                <Button className="gradient-primary text-primary-foreground rounded-xl shadow-warm hover:opacity-90 transition-opacity">
+                  <User className="w-4 h-4 mr-2" /> Staff Login
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
