@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['DM Sans', 'sans-serif'],
-        serif: ['Playfair Display', 'serif'],
+        sans: ['Inter', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -79,9 +79,9 @@ export default {
         "3xl": "calc(var(--radius) + 12px)",
       },
       boxShadow: {
-        'soft': '0 2px 15px -3px hsl(24 30% 20% / 0.07), 0 10px 20px -2px hsl(24 30% 20% / 0.04)',
-        'warm': '0 4px 20px -2px hsl(25 95% 53% / 0.15)',
-        'glow': '0 0 30px -5px hsl(25 95% 53% / 0.3)',
+        'soft': '0 2px 15px -3px hsl(230 25% 20% / 0.06), 0 10px 20px -2px hsl(230 25% 20% / 0.03)',
+        'primary': '0 4px 14px 0 hsl(234 89% 54% / 0.35)',
+        'glow': '0 0 30px -5px hsl(234 89% 54% / 0.25)',
       },
       keyframes: {
         "accordion-down": {
