@@ -18,12 +18,15 @@ import {
   Instagram,
   Facebook,
   Star,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Download,
+  Share
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalTime } from '@/lib/nepalTime';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useWaitTime } from '@/hooks/useWaitTime';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { 
   phoneSchema, 
   specialInstructionsSchema, 
@@ -31,10 +34,22 @@ import {
   sanitizeText 
 } from '@/lib/validation';
 
+// Detect iOS
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
+// Detect if in Safari
+const isInSafari = () => {
+  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+};
+
 export default function TableOrder() {
   const { tableNumber } = useParams();
   const navigate = useNavigate();
   const { menuItems, categories, settings, addOrder, getCustomerPoints, updateOrderStatus, callWaiter, waiterCalls } = useStore();
+  const { isInstallable, isInstalled, install } = usePWAInstall();
   
   const [phone, setPhone] = useState('');
   const [isPhoneEntered, setIsPhoneEntered] = useState(false);
@@ -51,6 +66,11 @@ export default function TableOrder() {
   const [specialInstructions, setSpecialInstructions] = useState('');
 
   const table = parseInt(tableNumber || '0');
+  
+  // Check if running as PWA
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+  const iOS = isIOS();
+  const safari = isInSafari();
   
   // Favorites hook
   const { favorites, toggleFavorite, isFavorite } = useFavorites(phone);
@@ -358,6 +378,141 @@ export default function TableOrder() {
       default: return { text: status, color: '#666' };
     }
   };
+
+  const handleInstall = async () => {
+    await install();
+  };
+
+  // If not running as PWA, show install prompt
+  if (!isPWA) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 flex flex-col items-center justify-center p-6 text-white">
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          {settings.logo ? (
+            <img 
+              src={settings.logo} 
+              alt={settings.restaurantName} 
+              className="w-20 h-20 rounded-2xl object-cover mx-auto mb-4 shadow-2xl"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center mx-auto mb-4 shadow-2xl">
+              <span className="text-4xl">🍵</span>
+            </div>
+          )}
+          <h1 className="text-3xl font-bold tracking-tight">{settings.restaurantName}</h1>
+          <p className="text-gray-400 mt-1">Table {table}</p>
+        </div>
+
+        {/* Install Required Card */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 max-w-sm w-full text-center border border-white/10">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+            <Download className="w-10 h-10 text-white" />
+          </div>
+          
+          <h2 className="text-xl font-semibold mb-2">Install App to Order</h2>
+          <p className="text-gray-400 text-sm mb-6">
+            Please install our app to your home screen for the best ordering experience.
+          </p>
+
+          {/* Benefits */}
+          <div className="grid grid-cols-3 gap-3 mb-6 text-center">
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-2xl mb-1">⚡</div>
+              <div className="text-xs text-gray-300">Faster</div>
+            </div>
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-2xl mb-1">📱</div>
+              <div className="text-xs text-gray-300">Full Screen</div>
+            </div>
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-2xl mb-1">🍽️</div>
+              <div className="text-xs text-gray-300">Easy Order</div>
+            </div>
+          </div>
+
+          {/* Android Install Button */}
+          {!iOS && isInstallable && (
+            <button
+              onClick={handleInstall}
+              className="w-full bg-white text-black py-4 rounded-xl font-semibold flex items-center justify-center gap-2 mb-4"
+            >
+              <Download className="w-5 h-5" />
+              Install App
+            </button>
+          )}
+
+          {/* iOS Instructions */}
+          {iOS && (
+            <div className="bg-white/10 rounded-2xl p-4 text-left">
+              <h4 className="font-semibold text-white mb-4 text-center">How to Install</h4>
+              
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                    1
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">Tap the Share button</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                        <Share className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-gray-400 text-xs">at the bottom of Safari</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                    2
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">Tap "Add to Home Screen"</p>
+                    <p className="text-gray-400 text-xs mt-1">Scroll down in the share menu</p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">Tap "Add" to confirm</p>
+                    <p className="text-gray-400 text-xs mt-1">Then open from your home screen</p>
+                  </div>
+                </div>
+              </div>
+
+              {!safari && (
+                <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-3 mt-4">
+                  <p className="text-amber-200 text-xs text-center">
+                    <span className="font-medium">Tip:</span> Open this page in Safari for installation
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Non-installable Android */}
+          {!iOS && !isInstallable && (
+            <div className="bg-white/10 rounded-2xl p-4">
+              <p className="text-gray-300 text-sm">
+                Open this page in Chrome or your default browser, then use the menu (⋮) to select "Add to Home Screen" or "Install App".
+              </p>
+            </div>
+          )}
+        </div>
+
+        <p className="text-gray-500 text-xs mt-6">
+          Once installed, scan the QR code again to start ordering
+        </p>
+      </div>
+    );
+  }
 
   // Phone entry screen (Login Modal Style)
   if (!isPhoneEntered) {
