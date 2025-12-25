@@ -34,6 +34,7 @@ import { useRushHour } from '@/hooks/useRushHour';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { MenuItemBadge, BadgeType } from '@/components/ui/MenuItemBadge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { isPWA } from './Install';
 import { 
   phoneSchema, 
   specialInstructionsSchema, 
@@ -114,8 +115,21 @@ export default function TableOrder() {
     return undefined;
   };
 
+  // Check if running as PWA - redirect to install if not
+  useEffect(() => {
+    if (!isPWA()) {
+      // Store the intended table for after install
+      sessionStorage.setItem('chiyadani:pendingTable', String(table));
+      navigate('/install', { replace: true });
+      return;
+    }
+  }, [navigate, table]);
+
   // Validate table number and handle session
   useEffect(() => {
+    // Skip if not PWA (will be redirected)
+    if (!isPWA()) return;
+    
     if (!table || table < 1 || table > settings.tableCount) {
       toast.error('Invalid table number');
       navigate('/scan');
