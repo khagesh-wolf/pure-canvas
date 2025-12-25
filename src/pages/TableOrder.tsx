@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { OrderItem } from '@/types';
@@ -19,7 +19,9 @@ import {
   Facebook,
   Star,
   UtensilsCrossed,
-  Trash2
+  Trash2,
+  Flame,
+  AlertCircle
 } from 'lucide-react';
 import { useHapticFeedback, playOrderSuccessSound } from '@/hooks/useHapticFeedback';
 import { Confetti } from '@/components/Confetti';
@@ -27,6 +29,11 @@ import { toast } from 'sonner';
 import { formatNepalTime } from '@/lib/nepalTime';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useWaitTime } from '@/hooks/useWaitTime';
+import { useRateLimiter } from '@/hooks/useRateLimiter';
+import { useRushHour } from '@/hooks/useRushHour';
+import { LazyImage } from '@/components/ui/LazyImage';
+import { MenuItemBadge, BadgeType } from '@/components/ui/MenuItemBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   phoneSchema, 
   specialInstructionsSchema, 
@@ -62,11 +69,50 @@ export default function TableOrder() {
   // Wait time hook
   const { formatWaitTime, getWaitTimeForNewOrder, queueLength } = useWaitTime();
 
+  // Rush hour detection
+  const rushHourInfo = useRushHour();
+
+  // Get customer's orders for this table - subscribe to orders from store directly for real-time updates
+  const storeOrders = useStore(state => state.orders);
+
+  // Rate limiter for order placement (max 5 orders per 10 minutes)
+  const { checkRateLimit } = useRateLimiter({
+    maxRequests: 5,
+    windowMs: 10 * 60 * 1000,
+    message: 'Too many orders. Please wait a few minutes.',
+  });
+
   // Haptic feedback hook
   const { hapticAddToCart, hapticQuantityChange, hapticDeleteItem, hapticOrderPlaced, hapticFavorite } = useHapticFeedback();
 
   // Get the table number that was originally scanned (stored in session)
   const [lockedTable, setLockedTable] = useState<number | null>(null);
+
+  // Calculate popular items (items that appear most in recent orders)
+  const popularItems = useMemo(() => {
+    const recentOrders = storeOrders.slice(-50);
+    const itemCounts: Record<string, number> = {};
+    
+    recentOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.menuItemId) {
+          itemCounts[item.menuItemId] = (itemCounts[item.menuItemId] || 0) + item.qty;
+        }
+      });
+    });
+    
+    // Get top 5 popular items
+    return Object.entries(itemCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([id]) => id);
+  }, [storeOrders]);
+
+  // Get badge for menu item
+  const getItemBadge = (itemId: string): BadgeType | undefined => {
+    if (popularItems.includes(itemId)) return 'popular';
+    return undefined;
+  };
 
   // Validate table number and lock the session to the scanned table
   useEffect(() => {
@@ -200,13 +246,10 @@ export default function TableOrder() {
     return () => observer.disconnect();
   }, [categories, activeCategory, isScrolling]);
 
-  // Calculate estimated wait time for current cart
+  // Calculate estimated wait time for current cart (with rush hour adjustment)
   const estimatedWait = cart.length > 0 
-    ? getWaitTimeForNewOrder(cart.map(c => ({ name: c.name, qty: c.qty })))
+    ? Math.ceil(getWaitTimeForNewOrder(cart.map(c => ({ name: c.name, qty: c.qty }))) * rushHourInfo.prepTimeMultiplier)
     : 0;
-
-  // Get customer's orders for this table - subscribe to orders from store directly for real-time updates
-  const storeOrders = useStore(state => state.orders);
   
   const myOrders = storeOrders.filter(
     o => o.tableNumber === table && o.customerPhone === phone && ['pending', 'accepted'].includes(o.status)
@@ -305,6 +348,11 @@ export default function TableOrder() {
   const handleSubmitOrder = async () => {
     if (cart.length === 0) {
       toast.error('Please add items to your cart');
+      return;
+    }
+
+    // Rate limit check
+    if (!checkRateLimit()) {
       return;
     }
 
@@ -432,6 +480,12 @@ export default function TableOrder() {
         </div>
         
         <div className="justify-self-end flex items-center gap-2">
+          {rushHourInfo.isRushHour && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-destructive/10 rounded-full text-xs text-destructive whitespace-nowrap">
+              <Flame className="w-3 h-3" />
+              Busy
+            </div>
+          )}
           {queueLength > 0 && (
             <div className="flex items-center gap-1 px-2 py-1 bg-[#fff3e0] rounded-full text-xs text-[#e65100] whitespace-nowrap">
               <Clock className="w-3 h-3" />
@@ -660,19 +714,12 @@ export default function TableOrder() {
                         )}
                       </div>
                     </div>
-                    <div className="w-[100px] h-[100px] rounded-xl bg-[#eee] overflow-hidden flex-shrink-0">
-                      {item.image ? (
-                        <img 
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-muted/50">
-                          <span className="text-xs text-muted-foreground font-medium">No Image</span>
-                        </div>
-                      )}
-                    </div>
+                    <LazyImage
+                      src={item.image || ''}
+                      alt={item.name}
+                      className="w-[100px] h-[100px] rounded-xl"
+                      fallbackClassName="w-[100px] h-[100px] rounded-xl"
+                    />
                   </div>
                 );
               })
@@ -695,15 +742,16 @@ export default function TableOrder() {
                 return (
                   <div key={item.id} className={`flex justify-between border-b border-[#eee] pb-4 mb-5 ${!item.available ? 'opacity-60' : ''}`}>
                     <div className="flex-1 pr-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
+                        {getItemBadge(item.id) && <MenuItemBadge type={getItemBadge(item.id)!} />}
                         <button
                           onClick={(e) => { 
                             e.stopPropagation(); 
                             hapticFavorite(); 
                             const btn = e.currentTarget;
                             btn.classList.remove('heart-animate');
-                            void btn.offsetWidth; // Trigger reflow
+                            void btn.offsetWidth;
                             btn.classList.add('heart-animate');
                             toggleFavorite(item.id); 
                           }}

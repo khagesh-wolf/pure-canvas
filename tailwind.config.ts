@@ -82,6 +82,7 @@ export default {
         'soft': '0 2px 15px -3px hsl(230 25% 20% / 0.06), 0 10px 20px -2px hsl(230 25% 20% / 0.03)',
         'primary': '0 4px 14px 0 hsl(234 89% 54% / 0.35)',
         'glow': '0 0 30px -5px hsl(234 89% 54% / 0.25)',
+        'lift': '0 10px 25px -5px hsl(230 25% 20% / 0.1), 0 8px 10px -6px hsl(230 25% 20% / 0.04)',
       },
       keyframes: {
         "accordion-down": {
