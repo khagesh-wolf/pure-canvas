@@ -148,6 +148,57 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 -- (For POS systems, data needs to be accessible)
 -- ===========================================
 
+-- Drop existing policies first to avoid conflicts
+DROP POLICY IF EXISTS "Public read categories" ON categories;
+DROP POLICY IF EXISTS "Public insert categories" ON categories;
+DROP POLICY IF EXISTS "Public update categories" ON categories;
+DROP POLICY IF EXISTS "Public delete categories" ON categories;
+
+DROP POLICY IF EXISTS "Public read menu_items" ON menu_items;
+DROP POLICY IF EXISTS "Public insert menu_items" ON menu_items;
+DROP POLICY IF EXISTS "Public update menu_items" ON menu_items;
+DROP POLICY IF EXISTS "Public delete menu_items" ON menu_items;
+
+DROP POLICY IF EXISTS "Public read orders" ON orders;
+DROP POLICY IF EXISTS "Public insert orders" ON orders;
+DROP POLICY IF EXISTS "Public update orders" ON orders;
+DROP POLICY IF EXISTS "Public delete orders" ON orders;
+
+DROP POLICY IF EXISTS "Public read bills" ON bills;
+DROP POLICY IF EXISTS "Public insert bills" ON bills;
+DROP POLICY IF EXISTS "Public update bills" ON bills;
+DROP POLICY IF EXISTS "Public delete bills" ON bills;
+
+DROP POLICY IF EXISTS "Public read staff" ON staff;
+DROP POLICY IF EXISTS "Public insert staff" ON staff;
+DROP POLICY IF EXISTS "Public update staff" ON staff;
+DROP POLICY IF EXISTS "Public delete staff" ON staff;
+
+DROP POLICY IF EXISTS "Public read customers" ON customers;
+DROP POLICY IF EXISTS "Public insert customers" ON customers;
+DROP POLICY IF EXISTS "Public update customers" ON customers;
+DROP POLICY IF EXISTS "Public delete customers" ON customers;
+
+DROP POLICY IF EXISTS "Public read settings" ON settings;
+DROP POLICY IF EXISTS "Public insert settings" ON settings;
+DROP POLICY IF EXISTS "Public update settings" ON settings;
+
+DROP POLICY IF EXISTS "Public read expenses" ON expenses;
+DROP POLICY IF EXISTS "Public insert expenses" ON expenses;
+DROP POLICY IF EXISTS "Public delete expenses" ON expenses;
+
+DROP POLICY IF EXISTS "Public read waiter_calls" ON waiter_calls;
+DROP POLICY IF EXISTS "Public insert waiter_calls" ON waiter_calls;
+DROP POLICY IF EXISTS "Public update waiter_calls" ON waiter_calls;
+DROP POLICY IF EXISTS "Public delete waiter_calls" ON waiter_calls;
+
+DROP POLICY IF EXISTS "Public read transactions" ON transactions;
+DROP POLICY IF EXISTS "Public insert transactions" ON transactions;
+
+DROP POLICY IF EXISTS "Public read payment_blocks" ON payment_blocks;
+DROP POLICY IF EXISTS "Public insert payment_blocks" ON payment_blocks;
+DROP POLICY IF EXISTS "Public update payment_blocks" ON payment_blocks;
+
 -- Categories: Public read, authenticated write
 CREATE POLICY "Public read categories" ON categories FOR SELECT USING (true);
 CREATE POLICY "Public insert categories" ON categories FOR INSERT WITH CHECK (true);
@@ -244,6 +295,10 @@ CREATE INDEX IF NOT EXISTS idx_payment_blocks_table_phone ON payment_blocks(tabl
 CREATE INDEX IF NOT EXISTS idx_payment_blocks_paid_at ON payment_blocks(paid_at DESC);
 
 ALTER TABLE payment_blocks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read payment_blocks" ON payment_blocks;
+DROP POLICY IF EXISTS "Public insert payment_blocks" ON payment_blocks;
+DROP POLICY IF EXISTS "Public update payment_blocks" ON payment_blocks;
 
 CREATE POLICY "Public read payment_blocks" ON payment_blocks FOR SELECT USING (true);
 CREATE POLICY "Public insert payment_blocks" ON payment_blocks FOR INSERT WITH CHECK (true);
