@@ -75,22 +75,23 @@ function StaffApprovalInput({ onApprove }: { onApprove: () => void }) {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-3 w-full">
       <input
         type="password"
         inputMode="numeric"
         maxLength={6}
-        placeholder="Staff PIN"
+        placeholder="Enter Staff PIN"
         value={pin}
         onChange={(e) => setPin(e.target.value.slice(0, 6))}
-        className="flex-1 p-3 border-2 border-[#eee] rounded-lg text-center text-lg tracking-widest outline-none focus:border-[#06C167]"
+        className="w-full p-4 border-2 border-border rounded-xl text-center text-xl tracking-[0.3em] font-mono outline-none focus:border-primary transition-colors"
+        autoComplete="off"
       />
       <button
         onClick={handlePinSubmit}
         disabled={pin.length < 4 || isVerifying}
-        className="px-6 py-3 bg-[#06C167] text-white rounded-lg font-semibold disabled:opacity-50"
+        className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
       >
-        {isVerifying ? '...' : 'OK'}
+        {isVerifying ? 'Verifying...' : 'Confirm'}
       </button>
     </div>
   );
@@ -705,45 +706,63 @@ export default function TableOrder() {
       : `${minsAgo} minutes ago`;
     
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-sm rounded-2xl p-8 shadow-lg text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
-            <ShieldAlert className="w-8 h-8 text-amber-600" />
+      <div className="min-h-screen min-h-[100dvh] bg-gradient-to-b from-amber-50 to-white flex items-center justify-center p-4 sm:p-6">
+        <div className="bg-white w-full max-w-sm rounded-2xl p-6 sm:p-8 shadow-xl text-center">
+          {/* Icon */}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-amber-100 rounded-full flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
           </div>
-          <h2 className="text-xl font-bold mb-2">Staff Confirmation Required</h2>
-          <p className="text-[#666] mb-4 text-sm">
-            Your bill was paid {timeAgoText}. To start a new order, please ask a staff member to confirm.
+          
+          {/* Title */}
+          <h2 className="text-xl sm:text-2xl font-bold mb-2 text-foreground">Staff Confirmation Required</h2>
+          
+          {/* Description */}
+          <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base leading-relaxed">
+            Your bill was paid <span className="font-medium text-foreground">{timeAgoText}</span>. To start a new order, please ask a staff member to confirm.
           </p>
-          <div className="bg-[#f5f5f5] p-3 rounded-lg mb-6 text-sm">
-            <div className="font-medium">Table {table}</div>
-            <div className="text-[#999]">{phone}</div>
+          
+          {/* Table Info */}
+          <div className="bg-muted/50 p-4 rounded-xl mb-6 sm:mb-8">
+            <div className="text-lg sm:text-xl font-bold text-foreground">Table {table}</div>
+            <div className="text-muted-foreground text-sm mt-1">{phone}</div>
           </div>
           
-          <div className="text-xs text-[#999] mb-4">
-            Staff: Enter PIN to approve
-          </div>
-          
-          <StaffApprovalInput 
-            onApprove={async () => {
-              if (paymentBlock.block_id) {
-                const success = await overridePaymentBlock(paymentBlock.block_id);
-                if (success) {
-                  setShowStaffConfirmation(false);
-                  setPaymentBlock(null);
-                  toast.success('Session approved! You can now order.');
-                } else {
-                  toast.error('Failed to approve. Please try again.');
+          {/* PIN Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>Staff: Enter your PIN to approve</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            
+            <StaffApprovalInput 
+              onApprove={async () => {
+                if (paymentBlock.block_id) {
+                  const success = await overridePaymentBlock(paymentBlock.block_id);
+                  if (success) {
+                    setShowStaffConfirmation(false);
+                    setPaymentBlock(null);
+                    toast.success('Session approved! You can now order.');
+                  } else {
+                    toast.error('Failed to approve. Please try again.');
+                  }
                 }
-              }
-            }}
-          />
+              }}
+            />
+            
+            {/* Help Text */}
+            <p className="text-xs text-muted-foreground pt-2">
+              PIN is the staff member's password set in Admin → Staff
+            </p>
+          </div>
           
+          {/* Cancel Link */}
           <button
             onClick={() => {
               localStorage.removeItem('chiyadani:customerActiveSession');
               navigate('/', { replace: true });
             }}
-            className="w-full mt-4 text-[#666] text-sm underline"
+            className="w-full mt-6 text-muted-foreground text-sm hover:text-foreground transition-colors underline underline-offset-2"
           >
             Cancel and scan QR again
           </button>
