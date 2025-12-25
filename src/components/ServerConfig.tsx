@@ -1,27 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Server, Wifi, WifiOff, RefreshCw, Settings2, QrCode, Copy, Check } from 'lucide-react';
-import { getApiBaseUrl, checkBackendHealth } from '@/lib/apiClient';
+import { Server, Wifi, WifiOff, RefreshCw, Settings2, QrCode, Copy, Check, AlertTriangle } from 'lucide-react';
+import { getApiBaseUrl, checkBackendHealth, isAccessingViaMdns, setMdnsFallbackIp, getMdnsFallbackIp, clearMdnsFallbackIp } from '@/lib/apiClient';
 import { wsSync } from '@/lib/websocketSync';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 
 export function ServerConfig() {
   const [serverUrl, setServerUrl] = useState(getApiBaseUrl());
+  const [fallbackIp, setFallbackIp] = useState(getMdnsFallbackIp() || '');
   const [testing, setTesting] = useState(false);
   const [open, setOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
   const isConnected = wsSync.isConnected();
+  const isMdns = isAccessingViaMdns();
 
-  // Get the current app URL for QR code
-  const currentUrl = typeof window !== 'undefined' 
-    ? `${window.location.protocol}//${window.location.host}` 
-    : '';
+  // Get the current app URL for QR code - prefer IP-based URL if available
+  const getQrUrl = () => {
+    if (typeof window === 'undefined') return '';
+    const fallback = getMdnsFallbackIp();
+    if (fallback) {
+      return `http://${fallback}:${window.location.port || '80'}`;
+    }
+    return `${window.location.protocol}//${window.location.host}`;
+  };
+  
+  const currentUrl = getQrUrl();
 
   const handleTestConnection = async () => {
     setTesting(true);
@@ -62,6 +71,18 @@ export function ServerConfig() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Failed to copy URL');
+    }
+  };
+
+  const handleSaveFallbackIp = () => {
+    if (fallbackIp) {
+      setMdnsFallbackIp(fallbackIp);
+      toast.success('Fallback IP saved. Reloading...');
+      window.location.reload();
+    } else {
+      clearMdnsFallbackIp();
+      toast.success('Fallback IP cleared. Reloading...');
+      window.location.reload();
     }
   };
 
@@ -130,6 +151,31 @@ export function ServerConfig() {
               </div>
             )}
           </div>
+
+          {/* mDNS Fallback IP - only show when accessing via .local */}
+          {isMdns && (
+            <div className="space-y-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <Label className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                mDNS Fallback IP
+              </Label>
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                Other devices may not resolve <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">.local</code> hostnames. 
+                Enter your server's IP address for reliable cross-device access.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={fallbackIp}
+                  onChange={(e) => setFallbackIp(e.target.value)}
+                  placeholder="192.168.1.100"
+                  className="font-mono"
+                />
+                <Button variant="outline" onClick={handleSaveFallbackIp}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Server URL */}
           <div className="space-y-2">

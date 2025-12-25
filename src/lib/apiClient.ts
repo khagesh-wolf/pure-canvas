@@ -3,28 +3,27 @@
 
 const BACKEND_PORT = 3001;
 
+// Check if hostname is mDNS (.local)
+const isMdnsHostname = (hostname: string): boolean => {
+  return hostname.endsWith('.local');
+};
+
 // Auto-detect the API base URL from current window location
 const getAutoDetectedUrl = (): string => {
   if (typeof window === 'undefined') return 'http://localhost:3001';
   
-  const { hostname, protocol } = window.location;
+  const { hostname } = window.location;
   
-  // For local development, always use HTTP since backend doesn't support HTTPS
-  // mDNS (.local) and local IPs should always use HTTP
-  const isLocalNetwork = hostname === 'localhost' || 
-                         hostname === '127.0.0.1' || 
-                         hostname.endsWith('.local') ||
-                         /^192\.168\.\d+\.\d+$/.test(hostname) ||
-                         /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
-                         /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname);
-  
-  // Always use HTTP for local network (backend doesn't have HTTPS)
-  if (isLocalNetwork) {
-    return `http://${hostname}:${BACKEND_PORT}`;
+  // For mDNS hostnames, check if we have a cached working IP
+  // mDNS resolution can fail on some devices (especially Android with Private DNS)
+  if (isMdnsHostname(hostname)) {
+    const cachedIp = localStorage.getItem('mdns_fallback_ip');
+    if (cachedIp) {
+      return `http://${cachedIp}:${BACKEND_PORT}`;
+    }
   }
   
   // Always use HTTP since the backend doesn't support HTTPS
-  // The backend runs locally and requires HTTP connections
   return `http://${hostname}:${BACKEND_PORT}`;
 };
 
@@ -33,12 +32,31 @@ export const setApiBaseUrl = (url: string) => {
   window.location.reload();
 };
 
+// Set a fallback IP for mDNS resolution issues
+export const setMdnsFallbackIp = (ip: string) => {
+  localStorage.setItem('mdns_fallback_ip', ip);
+};
+
+export const getMdnsFallbackIp = (): string | null => {
+  return localStorage.getItem('mdns_fallback_ip');
+};
+
+export const clearMdnsFallbackIp = () => {
+  localStorage.removeItem('mdns_fallback_ip');
+};
+
 export const getApiBaseUrl = () => {
   // If user has manually set a URL, use that; otherwise auto-detect
   const manualUrl = localStorage.getItem('api_base_url');
   if (manualUrl) return manualUrl;
   
   return getAutoDetectedUrl();
+};
+
+// Check if current access is via mDNS
+export const isAccessingViaMdns = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return isMdnsHostname(window.location.hostname);
 };
 
 // Generic fetch wrapper with error handling
