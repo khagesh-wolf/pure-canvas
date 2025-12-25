@@ -74,8 +74,26 @@ export default function Install() {
     
     if (outcome === 'accepted') {
       setIsInstalled(true);
+      // Check for pending table redirect
+      const pendingTable = sessionStorage.getItem('chiyadani:pendingTable');
+      if (pendingTable) {
+        sessionStorage.removeItem('chiyadani:pendingTable');
+        navigate(`/scan?table=${pendingTable}`);
+        return;
+      }
     }
     setDeferredPrompt(null);
+  };
+
+  // Handle navigation after install
+  const handleContinue = () => {
+    const pendingTable = sessionStorage.getItem('chiyadani:pendingTable');
+    if (pendingTable) {
+      sessionStorage.removeItem('chiyadani:pendingTable');
+      navigate(`/scan?table=${pendingTable}`);
+    } else {
+      navigate('/scan');
+    }
   };
 
   // If already installed, show success and redirect option
@@ -108,7 +126,7 @@ export default function Install() {
           </p>
 
           <Button 
-            onClick={() => navigate('/scan')}
+            onClick={handleContinue}
             className="w-full bg-white text-black hover:bg-gray-100"
           >
             <QrCode className="w-4 h-4 mr-2" />
