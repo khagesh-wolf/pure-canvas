@@ -1,28 +1,10 @@
-// Central Supabase client for subscription management
-// This connects to the admin/central database that manages all restaurant subscriptions
+// Central subscription verification via edge function API
+// This calls the dashboard's subscription check endpoint
 
-import { createClient } from '@supabase/supabase-js';
+const DASHBOARD_PROJECT_ID = 'bttirwdxislcsdpshgdj';
+const RESTAURANT_PROJECT_ID = 'tzmxbgplkjwgsayjesxf';
 
-const centralSupabaseUrl = import.meta.env.VITE_CENTRAL_SUPABASE_URL;
-const centralSupabaseAnonKey = import.meta.env.VITE_CENTRAL_SUPABASE_ANON_KEY;
-
-export const restaurantId = import.meta.env.VITE_RESTAURANT_ID;
-
-// Only create client if credentials are configured
-export const centralSupabase = centralSupabaseUrl && centralSupabaseAnonKey
-  ? createClient(centralSupabaseUrl, centralSupabaseAnonKey)
-  : null;
-
-export interface Restaurant {
-  id: string;
-  name: string;
-  domain: string;
-  trial_start: string;
-  subscription_end: string | null;
-  plan: '6_months' | '1_year' | null;
-  is_active: boolean;
-  created_at: string;
-}
+const SUBSCRIPTION_API_URL = `https://${DASHBOARD_PROJECT_ID}.supabase.co/functions/v1/check-subscription`;
 
 export interface SubscriptionStatus {
   isValid: boolean;
@@ -33,30 +15,30 @@ export interface SubscriptionStatus {
   message: string;
 }
 
+interface ApiResponse {
+  valid: boolean;
+  status: 'active' | 'trial' | 'expired' | 'deactivated';
+  days_remaining?: number;
+  message?: string;
+}
+
 export async function checkSubscription(): Promise<SubscriptionStatus> {
-  // If central DB not configured, allow access (development mode)
-  if (!centralSupabase || !restaurantId) {
-    console.warn('[Subscription] Central DB not configured - running in development mode');
-    return {
-      isValid: true,
-      isTrial: false,
-      daysRemaining: 999,
-      expiresAt: null,
-      plan: 'development',
-      message: 'Development mode - no subscription check',
-    };
-  }
-
   try {
-    const { data, error } = await centralSupabase
-      .from('restaurants')
-      .select('*')
-      .eq('id', restaurantId)
-      .maybeSingle();
+    console.log('[Subscription] Checking subscription status...');
+    
+    const response = await fetch(SUBSCRIPTION_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        project_id: RESTAURANT_PROJECT_ID,
+      }),
+    });
 
-    if (error) {
-      console.error('[Subscription] Error checking subscription:', error);
-      // On error, allow access to prevent blocking due to network issues
+    if (!response.ok) {
+      console.error('[Subscription] API error:', response.status, response.statusText);
+      // On API error, allow access to prevent blocking due to network issues
       return {
         isValid: true,
         isTrial: false,
@@ -67,80 +49,54 @@ export async function checkSubscription(): Promise<SubscriptionStatus> {
       };
     }
 
-    if (!data) {
+    const data: ApiResponse = await response.json();
+    console.log('[Subscription] API response:', data);
+
+    // Handle invalid subscription
+    if (!data.valid) {
       return {
         isValid: false,
         isTrial: false,
         daysRemaining: 0,
         expiresAt: null,
-        plan: null,
-        message: 'Restaurant not found in system. Please contact administrator.',
+        plan: data.status,
+        message: data.message || 'Your subscription is not valid. Please contact administrator.',
       };
     }
 
-    const restaurant = data as Restaurant;
-    const now = new Date();
-    const trialStart = new Date(restaurant.trial_start);
-    const trialEnd = new Date(trialStart);
-    trialEnd.setMonth(trialEnd.getMonth() + 1); // 1 month trial
+    // Calculate expiry date based on days remaining
+    const expiresAt = data.days_remaining 
+      ? new Date(Date.now() + data.days_remaining * 24 * 60 * 60 * 1000)
+      : null;
 
-    // Check if restaurant is manually deactivated
-    if (!restaurant.is_active) {
-      return {
-        isValid: false,
-        isTrial: false,
-        daysRemaining: 0,
-        expiresAt: null,
-        plan: restaurant.plan,
-        message: 'Account has been deactivated. Please contact administrator.',
-      };
-    }
-
-    // Check if in trial period
-    if (now < trialEnd && !restaurant.subscription_end) {
-      const daysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    // Handle trial status
+    if (data.status === 'trial') {
       return {
         isValid: true,
         isTrial: true,
-        daysRemaining,
-        expiresAt: trialEnd,
+        daysRemaining: data.days_remaining || 0,
+        expiresAt,
         plan: 'trial',
-        message: daysRemaining <= 5 
-          ? `Trial expires in ${daysRemaining} days. Subscribe to continue using.`
-          : `Trial period - ${daysRemaining} days remaining`,
+        message: data.days_remaining && data.days_remaining <= 5
+          ? `Trial expires in ${data.days_remaining} days. Subscribe to continue using.`
+          : `Trial period - ${data.days_remaining || 0} days remaining`,
       };
     }
 
-    // Check if has active subscription
-    if (restaurant.subscription_end) {
-      const subscriptionEnd = new Date(restaurant.subscription_end);
-      
-      if (now < subscriptionEnd) {
-        const daysRemaining = Math.ceil((subscriptionEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return {
-          isValid: true,
-          isTrial: false,
-          daysRemaining,
-          expiresAt: subscriptionEnd,
-          plan: restaurant.plan,
-          message: daysRemaining <= 7
-            ? `Subscription expires in ${daysRemaining} days. Renew to continue.`
-            : `Active subscription - ${daysRemaining} days remaining`,
-        };
-      }
-    }
-
-    // Trial and subscription both expired
+    // Handle active subscription
     return {
-      isValid: false,
+      isValid: true,
       isTrial: false,
-      daysRemaining: 0,
-      expiresAt: restaurant.subscription_end ? new Date(restaurant.subscription_end) : trialEnd,
-      plan: restaurant.plan,
-      message: 'Your subscription has expired. Please renew to continue using the system.',
+      daysRemaining: data.days_remaining || 0,
+      expiresAt,
+      plan: data.status,
+      message: data.days_remaining && data.days_remaining <= 7
+        ? `Subscription expires in ${data.days_remaining} days. Renew to continue.`
+        : `Active subscription - ${data.days_remaining || 0} days remaining`,
     };
   } catch (err) {
     console.error('[Subscription] Unexpected error:', err);
+    // On error, allow access to prevent blocking due to network issues
     return {
       isValid: true,
       isTrial: false,
