@@ -38,12 +38,16 @@ export function useSubscription() {
     return () => clearInterval(interval);
   }, [refresh]);
 
+  // Block if invalid OR if days remaining is 0 or less
+  const isExpired = status?.daysRemaining !== undefined && status.daysRemaining <= 0;
+  const isValid = (status?.isValid ?? true) && !isExpired;
+  
   return {
     status,
     isLoading,
     lastChecked,
     refresh,
-    isValid: status?.isValid ?? true,
-    showWarning: status?.isValid && status?.daysRemaining <= 7,
+    isValid,
+    showWarning: isValid && status?.daysRemaining !== undefined && status.daysRemaining <= 7 && status.daysRemaining > 0,
   };
 }
