@@ -16,14 +16,14 @@ export function useSubscription() {
       setLastChecked(new Date());
     } catch (error) {
       console.error('[useSubscription] Error:', error);
-      // On error, assume valid to not block users
+      // On error (network/CORS), assume valid and do NOT infer expiry
       setStatus({
         isValid: true,
         isTrial: false,
-        daysRemaining: 0,
+        daysRemaining: null,
         expiresAt: null,
         plan: null,
-        message: 'Could not verify subscription',
+        message: 'Could not verify subscription - temporary access granted',
       });
     } finally {
       setIsLoading(false);
@@ -38,16 +38,21 @@ export function useSubscription() {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  // Block if invalid OR if days remaining is 0 or less
-  const isExpired = status?.daysRemaining !== undefined && status.daysRemaining <= 0;
+  // Block only when we positively know it is expired/invalid
+  const daysRemainingKnown = typeof status?.daysRemaining === 'number';
+  const isExpired = daysRemainingKnown && (status!.daysRemaining as number) <= 0;
   const isValid = (status?.isValid ?? true) && !isExpired;
-  
+
   return {
     status,
     isLoading,
     lastChecked,
     refresh,
     isValid,
-    showWarning: isValid && status?.daysRemaining !== undefined && status.daysRemaining <= 7 && status.daysRemaining > 0,
+    showWarning:
+      isValid &&
+      daysRemainingKnown &&
+      (status!.daysRemaining as number) <= 7 &&
+      (status!.daysRemaining as number) > 0,
   };
 }

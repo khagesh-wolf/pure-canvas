@@ -9,7 +9,11 @@ const SUBSCRIPTION_API_URL = `https://${DASHBOARD_PROJECT_ID}.supabase.co/functi
 export interface SubscriptionStatus {
   isValid: boolean;
   isTrial: boolean;
-  daysRemaining: number;
+  /**
+   * Days remaining until expiration when known.
+   * Null means "unknown" (e.g. network/CORS error) and should not block access.
+   */
+  daysRemaining: number | null;
   expiresAt: Date | null;
   plan: string | null;
   message: string;
@@ -42,7 +46,7 @@ export async function checkSubscription(): Promise<SubscriptionStatus> {
       return {
         isValid: true,
         isTrial: false,
-        daysRemaining: 0,
+        daysRemaining: null,
         expiresAt: null,
         plan: null,
         message: 'Could not verify subscription - temporary access granted',
@@ -74,12 +78,12 @@ export async function checkSubscription(): Promise<SubscriptionStatus> {
       return {
         isValid: true,
         isTrial: true,
-        daysRemaining: data.days_remaining || 0,
+        daysRemaining: data.days_remaining ?? null,
         expiresAt,
         plan: 'trial',
-        message: data.days_remaining && data.days_remaining <= 5
+        message: data.days_remaining !== undefined && data.days_remaining <= 5
           ? `Trial expires in ${data.days_remaining} days. Subscribe to continue using.`
-          : `Trial period - ${data.days_remaining || 0} days remaining`,
+          : `Trial period - ${data.days_remaining ?? 0} days remaining`,
       };
     }
 
@@ -87,12 +91,12 @@ export async function checkSubscription(): Promise<SubscriptionStatus> {
     return {
       isValid: true,
       isTrial: false,
-      daysRemaining: data.days_remaining || 0,
+      daysRemaining: data.days_remaining ?? null,
       expiresAt,
       plan: data.status,
-      message: data.days_remaining && data.days_remaining <= 7
+      message: data.days_remaining !== undefined && data.days_remaining <= 7
         ? `Subscription expires in ${data.days_remaining} days. Renew to continue.`
-        : `Active subscription - ${data.days_remaining || 0} days remaining`,
+        : `Active subscription - ${data.days_remaining ?? 0} days remaining`,
     };
   } catch (err) {
     console.error('[Subscription] Unexpected error:', err);
@@ -100,7 +104,7 @@ export async function checkSubscription(): Promise<SubscriptionStatus> {
     return {
       isValid: true,
       isTrial: false,
-      daysRemaining: 0,
+      daysRemaining: null,
       expiresAt: null,
       plan: null,
       message: 'Could not verify subscription - temporary access granted',

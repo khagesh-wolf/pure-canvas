@@ -9,7 +9,9 @@ interface SubscriptionWarningProps {
 export function SubscriptionWarning({ status }: SubscriptionWarningProps) {
   const [dismissed, setDismissed] = useState(false);
 
-  if (dismissed || !status || status.daysRemaining > 7) {
+  const daysRemainingKnown = typeof status?.daysRemaining === 'number';
+
+  if (dismissed || !status || !daysRemainingKnown || status.daysRemaining > 7) {
     return null;
   }
 
