@@ -731,7 +731,7 @@ export default function TableOrder() {
           <div className="space-y-3">
             <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>Staff: Enter your PIN to approve</span>
+              <span>Ask Staff to Enter their PIN to approve</span>
               <div className="h-px flex-1 bg-border" />
             </div>
             
@@ -750,11 +750,6 @@ export default function TableOrder() {
               }}
             />
             
-            {/* Help Text */}
-            <p className="text-xs text-muted-foreground pt-2">
-              Use Staff PIN set in Admin → Staff
-            </p>
-          </div>
           
           {/* Cancel Link */}
           <button
