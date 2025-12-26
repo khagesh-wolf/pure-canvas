@@ -5,7 +5,7 @@
 
 import { compressImage } from './imageOptimizer';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const WORKER_URL = 'https://chiyadani-api.wolf76.workers.dev';
 
 interface UploadResult {
   success: boolean;
@@ -57,7 +57,7 @@ export async function uploadToR2(
     formData.append('contentType', 'image/webp');
 
     // Upload via edge function
-    const response = await fetch(`${API_BASE}/api/upload`, {
+    const response = await fetch(WORKER_URL, {
       method: 'POST',
       body: formData
     });
@@ -87,7 +87,7 @@ export async function uploadToR2(
  */
 export async function deleteFromR2(key: string): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE}/api/upload?key=${encodeURIComponent(key)}`, {
+    const response = await fetch(`${WORKER_URL}?key=${encodeURIComponent(key)}`, {
       method: 'DELETE'
     });
 
@@ -104,7 +104,7 @@ export async function deleteFromR2(key: string): Promise<boolean> {
 export async function getSignedUrl(key: string, expiresIn = 3600): Promise<string | null> {
   try {
     const response = await fetch(
-      `${API_BASE}/api/upload/signed?key=${encodeURIComponent(key)}&expires=${expiresIn}`
+      `${WORKER_URL}/signed?key=${encodeURIComponent(key)}&expires=${expiresIn}`
     );
 
     if (!response.ok) return null;

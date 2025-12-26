@@ -1,10 +1,6 @@
 // Image Upload Client for Cloudflare R2 via Worker
 
-const getWorkerUrl = (): string => {
-  // UPDATE THIS with your deployed worker URL after running: cd workers && wrangler deploy
-  // Example: 'https://chiyadani-api.your-subdomain.workers.dev'
-  return import.meta.env.VITE_API_URL || '';
-};
+const WORKER_URL = 'https://chiyadani-api.wolf76.workers.dev';
 
 export interface UploadResult {
   success: boolean;
@@ -25,7 +21,7 @@ export async function uploadImage(file: File, customFilename?: string): Promise<
       formData.append('filename', customFilename);
     }
 
-    const response = await fetch(`${getWorkerUrl()}/api/upload`, {
+    const response = await fetch(WORKER_URL, {
       method: 'POST',
       body: formData,
     });
@@ -55,7 +51,7 @@ export async function uploadImage(file: File, customFilename?: string): Promise<
  */
 export async function deleteImage(key: string): Promise<boolean> {
   try {
-    const response = await fetch(`${getWorkerUrl()}/api/upload?key=${encodeURIComponent(key)}`, {
+    const response = await fetch(`${WORKER_URL}?key=${encodeURIComponent(key)}`, {
       method: 'DELETE',
     });
 
