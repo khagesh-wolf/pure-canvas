@@ -2,6 +2,7 @@
 // This calls the dashboard's subscription check endpoint
 
 const DASHBOARD_PROJECT_ID = 'bttirwdxislcsdpshgdj';
+const DASHBOARD_ANON_KEY = 'sb_publishable_7hgtR3bkXIJ2fXMapgOzqw_48s17mJe';
 const RESTAURANT_PROJECT_ID = 'tzmxbgplkjwgsayjesxf';
 
 const SUBSCRIPTION_API_URL = `https://${DASHBOARD_PROJECT_ID}.supabase.co/functions/v1/check-subscription`;
@@ -34,6 +35,8 @@ export async function checkSubscription(): Promise<SubscriptionStatus> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'apikey': DASHBOARD_ANON_KEY,
+        'Authorization': `Bearer ${DASHBOARD_ANON_KEY}`,
       },
       body: JSON.stringify({
         project_id: RESTAURANT_PROJECT_ID,
