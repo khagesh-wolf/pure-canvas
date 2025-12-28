@@ -952,7 +952,7 @@ export default function TableOrder() {
                 // Redirect to scan page
                 navigate('/');
               }}
-              className="w-full bg-[#fff0f0] border border-[#ffcccc] px-3 py-2 rounded-full text-sm font-semibold text-[#e74c3c] flex items-center gap-2 justify-start"
+              className="w-full bg-destructive/10 border border-destructive/30 px-3 py-2 rounded-full text-sm font-semibold text-destructive flex items-center gap-2 justify-start"
             >
               <LogOut className="w-4 h-4" /> Logout
             </button>
@@ -960,8 +960,8 @@ export default function TableOrder() {
           
           {/* Social Media Links */}
           {(settings.instagramUrl || settings.facebookUrl || settings.tiktokUrl || settings.googleReviewUrl) && (
-            <div className="px-5 py-4 border-t border-[#eee]">
-              <p className="text-xs text-[#999] mb-3">Follow us</p>
+            <div className="px-5 py-4 border-t border-border">
+              <p className="text-xs text-muted-foreground mb-3">Follow us</p>
               <div className="flex gap-3">
                 {settings.instagramUrl && (
                   <a 
@@ -1009,7 +1009,7 @@ export default function TableOrder() {
             </div>
           )}
         </div>
-        <div className="p-5 bg-[#f9f9f9] border-t border-[#eee] text-sm text-[#666]">
+        <div className="p-5 bg-muted border-t border-border text-sm text-muted-foreground">
           © {new Date().getFullYear()} {settings.restaurantName}
         </div>
       </div>
@@ -1053,8 +1053,8 @@ export default function TableOrder() {
               <Heart className="w-6 h-6 text-[#e74c3c]" /> Favorites
             </h2>
             {favoriteItems.length === 0 ? (
-              <div className="text-center py-8 text-[#999]">
-                <Heart className="w-12 h-12 mx-auto mb-3 text-[#ddd]" />
+              <div className="text-center py-8 text-muted-foreground">
+                <Heart className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
                 <p>No favorites yet</p>
                 <p className="text-sm">Tap the heart icon on items to add them here</p>
               </div>
@@ -1062,7 +1062,7 @@ export default function TableOrder() {
               favoriteItems.map(item => {
                 const qty = getItemQty(item.id);
                 return (
-                  <div key={item.id} className="flex justify-between border-b border-[#eee] pb-4 mb-5">
+                  <div key={item.id} className="flex justify-between border-b border-border pb-4 mb-5">
                     <div className="flex-1 pr-4">
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
@@ -1081,30 +1081,30 @@ export default function TableOrder() {
                           <Heart className="w-4 h-4 fill-current" />
                         </button>
                       </div>
-                      <p className="font-medium text-[#333]">रू{item.price}</p>
+                      <p className="font-medium text-foreground">रू{item.price}</p>
                       {item.description && (
-                        <p className="text-xs text-[#888] mt-1 line-clamp-2">{item.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
                       )}
                       <div className="mt-3">
                         {qty === 0 ? (
                           <button
                             onClick={() => addToCart(item)}
-                            className={`bg-white border border-[#ddd] text-[#06C167] font-bold px-5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow ${lastAddedItemId === item.id ? 'cart-bounce' : ''}`}
+                            className={`bg-card border border-border text-primary font-bold px-5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow ${lastAddedItemId === item.id ? 'cart-bounce' : ''}`}
                           >
                             ADD
                           </button>
                         ) : (
-                          <div className="inline-flex items-center bg-white border border-[#eee] rounded-full overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+                          <div className="inline-flex items-center bg-card border border-border rounded-full overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
                             <button
                               onClick={() => updateQty(item.id, -1)}
-                              className="w-9 h-8 flex items-center justify-center text-[#06C167] text-xl active:bg-[#f0f0f0]"
+                              className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
                             >
                               −
                             </button>
-                            <span className="font-bold text-sm w-6 text-center">{qty}</span>
+                            <span className="font-bold text-sm w-6 text-center text-foreground">{qty}</span>
                             <button
                               onClick={() => updateQty(item.id, 1)}
-                              className="w-9 h-8 flex items-center justify-center text-[#06C167] text-xl active:bg-[#f0f0f0]"
+                              className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
                             >
                               +
                             </button>
@@ -1138,7 +1138,7 @@ export default function TableOrder() {
                 const qty = getItemQty(item.id);
                 const isFav = isFavorite(item.id);
                 return (
-                  <div key={item.id} className={`flex justify-between border-b border-[#eee] pb-4 mb-5 ${!item.available ? 'opacity-60' : ''}`}>
+                  <div key={item.id} className={`flex justify-between border-b border-border pb-4 mb-5 ${!item.available ? 'opacity-60' : ''}`}>
                     <div className="flex-1 pr-4">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
@@ -1158,36 +1158,36 @@ export default function TableOrder() {
                           <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
                         </button>
                       </div>
-                      <p className="font-medium text-[#333]">रू{item.price}</p>
+                      <p className="font-medium text-foreground">रू{item.price}</p>
                       {item.description && (
-                        <p className="text-xs text-[#888] mt-1 line-clamp-2">{item.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
                       )}
                       
                       {/* Inline Quantity Control or Unavailable */}
                       <div className="mt-3">
                         {!item.available ? (
-                          <span className="inline-block bg-gray-200 text-gray-500 font-medium px-4 py-1.5 rounded-full text-sm">
+                          <span className="inline-block bg-muted text-muted-foreground font-medium px-4 py-1.5 rounded-full text-sm">
                             Unavailable
                           </span>
                         ) : qty === 0 ? (
                           <button
                             onClick={() => addToCart(item)}
-                            className={`bg-white border border-[#ddd] text-[#06C167] font-bold px-5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow ${lastAddedItemId === item.id ? 'cart-bounce' : ''}`}
+                            className={`bg-card border border-border text-primary font-bold px-5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow ${lastAddedItemId === item.id ? 'cart-bounce' : ''}`}
                           >
                             ADD
                           </button>
                         ) : (
-                          <div className="inline-flex items-center bg-white border border-[#eee] rounded-full overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+                          <div className="inline-flex items-center bg-card border border-border rounded-full overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
                             <button
                               onClick={() => updateQty(item.id, -1)}
-                              className="w-9 h-8 flex items-center justify-center text-[#06C167] text-xl active:bg-[#f0f0f0]"
+                              className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
                             >
                               −
                             </button>
-                            <span className="font-bold text-sm w-6 text-center">{qty}</span>
+                            <span className="font-bold text-sm w-6 text-center text-foreground">{qty}</span>
                             <button
                               onClick={() => updateQty(item.id, 1)}
-                              className="w-9 h-8 flex items-center justify-center text-[#06C167] text-xl active:bg-[#f0f0f0]"
+                              className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
                             >
                               +
                             </button>
@@ -1195,7 +1195,7 @@ export default function TableOrder() {
                         )}
                       </div>
                     </div>
-                    <div className={`w-[100px] h-[100px] rounded-xl bg-[#eee] overflow-hidden flex-shrink-0 ${!item.available ? 'grayscale' : ''}`}>
+                    <div className={`w-[100px] h-[100px] rounded-xl bg-muted overflow-hidden flex-shrink-0 ${!item.available ? 'grayscale' : ''}`}>
                       {item.image ? (
                         <img 
                           src={item.image}

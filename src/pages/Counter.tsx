@@ -19,8 +19,11 @@ import {
   Bell,
   Settings,
   Map,
-  Calculator
+  Calculator,
+  Sun,
+  Moon
 } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import { formatNepalTime, formatNepalDateTime } from '@/lib/nepalTime';
 import FonepayQR from '@/components/FonepayQR';
@@ -56,6 +59,9 @@ const expenseCategories = ['ingredients', 'utilities', 'salary', 'maintenance', 
 export default function Counter() {
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
+  
+  // Theme hook
+  const { theme, setTheme } = useTheme();
   
   // Audio notification hooks
   useOrderNotification();
@@ -997,6 +1003,15 @@ export default function Counter() {
                 }`}
               >
                 <Wallet className="w-3 h-3" /> Expenses
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              >
+                {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
               </Button>
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.location.reload()}>
                 <RefreshCw className="w-3.5 h-3.5" />
