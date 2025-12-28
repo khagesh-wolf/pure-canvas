@@ -150,6 +150,20 @@ export default function Counter() {
   };
   const filteredAcceptedOrders = getFilteredAcceptedOrders();
 
+  // Helper function to aggregate items by name and price
+  const aggregateItems = (items: { name: string; qty: number; price: number }[]) => {
+    const aggregated: { name: string; qty: number; price: number }[] = [];
+    items.forEach(item => {
+      const existing = aggregated.find(a => a.name === item.name && a.price === item.price);
+      if (existing) {
+        existing.qty += item.qty;
+      } else {
+        aggregated.push({ name: item.name, qty: item.qty, price: item.price });
+      }
+    });
+    return aggregated;
+  };
+
   // Group pending orders by customer (table + phone)
   const getGroupedPendingOrders = (): PendingOrderGroup[] => {
     const groups: Record<string, PendingOrderGroup> = {};
@@ -172,6 +186,11 @@ export default function Counter() {
       if (new Date(order.createdAt) < new Date(groups[key].createdAt)) {
         groups[key].createdAt = order.createdAt;
       }
+    });
+
+    // Aggregate items for each group
+    Object.values(groups).forEach(group => {
+      group.allItems = aggregateItems(group.allItems.map(i => ({ name: i.name, qty: i.qty, price: i.price }))) as any;
     });
 
     return Object.values(groups).sort((a, b) => 
@@ -209,12 +228,20 @@ export default function Counter() {
       order.items.forEach(item => {
         const itemTotal = item.qty * item.price;
         groups[key].subtotal += itemTotal;
-        groups[key].items.push({
-          name: item.name,
-          qty: item.qty,
-          price: item.price,
-          total: itemTotal
-        });
+        
+        // Aggregate same items together
+        const existingItem = groups[key].items.find(i => i.name === item.name && i.price === item.price);
+        if (existingItem) {
+          existingItem.qty += item.qty;
+          existingItem.total += itemTotal;
+        } else {
+          groups[key].items.push({
+            name: item.name,
+            qty: item.qty,
+            price: item.price,
+            total: itemTotal
+          });
+        }
       });
     });
 
@@ -1239,21 +1266,21 @@ export default function Counter() {
 
           {/* Loyalty Points */}
           {availablePoints > 0 && (
-            <div className="bg-[#e8f5e9] p-3 rounded-lg mb-4">
+            <div className="bg-success/10 border border-success/20 p-3 rounded-lg mb-4">
               <label className="flex justify-between items-center cursor-pointer">
-                <span>Redeem <b>{availablePoints}</b> points (रू{availablePoints} off)</span>
+                <span className="text-foreground">Redeem <b>{availablePoints}</b> points (रू{availablePoints} off)</span>
                 <input 
                   type="checkbox" 
                   checked={redeemPoints}
                   onChange={(e) => setRedeemPoints(e.target.checked)}
-                  className="w-5 h-5"
+                  className="w-5 h-5 accent-success"
                 />
               </label>
             </div>
           )}
 
           {discountAmount > 0 && (
-            <div className="flex justify-between text-[#27ae60] mb-2">
+            <div className="flex justify-between text-success mb-2">
               <span>Discount (Points)</span>
               <span>-रू{discountAmount}</span>
             </div>

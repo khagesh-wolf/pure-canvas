@@ -38,7 +38,6 @@ import { Confetti } from '@/components/Confetti';
 import { toast } from 'sonner';
 import { formatNepalTime } from '@/lib/nepalTime';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useWaitTime } from '@/hooks/useWaitTime';
 import { useRateLimiter } from '@/hooks/useRateLimiter';
 import { useRushHour } from '@/hooks/useRushHour';
 import { LazyImage } from '@/components/ui/LazyImage';
@@ -124,9 +123,6 @@ export default function TableOrder() {
   
   // Favorites hook
   const { favorites, toggleFavorite, isFavorite } = useFavorites(phone);
-  
-  // Wait time hook
-  const { formatWaitTime, getWaitTimeForNewOrder, queueLength } = useWaitTime();
 
   // Rush hour detection
   const rushHourInfo = useRushHour();
@@ -469,10 +465,6 @@ export default function TableOrder() {
     return () => observer.disconnect();
   }, [categories, activeCategory, isScrolling]);
 
-  // Calculate estimated wait time for current cart (with rush hour adjustment)
-  const estimatedWait = cart.length > 0 
-    ? Math.ceil(getWaitTimeForNewOrder(cart.map(c => ({ name: c.name, qty: c.qty }))) * rushHourInfo.prepTimeMultiplier)
-    : 0;
   
   const myOrders = storeOrders.filter(
     o => o.tableNumber === table && o.customerPhone === phone && ['pending', 'accepted'].includes(o.status)
@@ -807,17 +799,17 @@ export default function TableOrder() {
 
   // Main ordering interface
   return (
-    <div className="min-h-screen bg-white pb-24 select-none">
+    <div className="min-h-screen bg-background pb-24 select-none">
       <Confetti isActive={showConfetti} />
       {/* Header */}
-      <header className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2.5 bg-white sticky top-0 z-[999] shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
+      <header className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2.5 bg-card sticky top-0 z-[999] shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-b border-border">
         <div className="flex items-center gap-2">
           {settings.logo ? (
             <img src={settings.logo} alt={settings.restaurantName} className="w-9 h-9 rounded-lg object-cover" />
           ) : (
             <span className="text-2xl">🍵</span>
           )}
-          <span className="text-lg font-bold tracking-tight text-[#333]">{settings.restaurantName}</span>
+          <span className="text-lg font-bold tracking-tight text-foreground">{settings.restaurantName}</span>
         </div>
         
         <div className="justify-self-end flex items-center gap-2">
@@ -827,13 +819,7 @@ export default function TableOrder() {
               Busy
             </div>
           )}
-          {queueLength > 0 && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-[#fff3e0] rounded-full text-xs text-[#e65100] whitespace-nowrap">
-              <Clock className="w-3 h-3" />
-              ~{formatWaitTime(estimatedWait)}
-            </div>
-          )}
-          <div className="text-sm bg-[#f6f6f6] px-3 py-1.5 rounded-full font-medium">
+          <div className="text-sm bg-muted px-3 py-1.5 rounded-full font-medium text-foreground">
             Table {table}
           </div>
         </div>
@@ -857,20 +843,20 @@ export default function TableOrder() {
       )}
       
       {/* Side Drawer */}
-      <div className={`fixed top-0 right-0 w-[280px] h-full bg-white z-[2001] transition-transform duration-300 shadow-[-5px_0_15px_rgba(0,0,0,0.1)] flex flex-col ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="p-5 border-b border-[#eee] flex justify-between items-center">
-          <h3 className="font-bold text-lg">My Account</h3>
-          <button onClick={() => setDrawerOpen(false)} className="text-2xl">✕</button>
+      <div className={`fixed top-0 right-0 w-[280px] h-full bg-card z-[2001] transition-transform duration-300 shadow-[-5px_0_15px_rgba(0,0,0,0.1)] flex flex-col ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-5 border-b border-border flex justify-between items-center">
+          <h3 className="font-bold text-lg text-foreground">My Account</h3>
+          <button onClick={() => setDrawerOpen(false)} className="text-2xl text-muted-foreground hover:text-foreground">✕</button>
         </div>
         <div className="p-5 flex-1">
-          <div className="bg-[#fff8e1] p-4 rounded-xl border border-[#ffe0b2] mb-5">
-            <span className="font-bold text-lg block mb-1">{phone}</span>
+          <div className="bg-muted/50 p-4 rounded-xl border border-border mb-5">
+            <span className="font-bold text-lg block mb-1 text-foreground">{phone}</span>
             {settings.pointSystemEnabled && (
-              <div className="text-[#f39c12] font-semibold flex items-center gap-1">
+              <div className="text-warning font-semibold flex items-center gap-1">
                 ⭐ {customerPoints} Points
               </div>
             )}
-            <div className="font-semibold text-[#7f8c8d] text-sm mt-2">
+            <div className="font-semibold text-muted-foreground text-sm mt-2">
               Table {table}
             </div>
           </div>
@@ -976,21 +962,21 @@ export default function TableOrder() {
       </div>
 
       {/* Category Pills */}
-      <div className="sticky top-[52px] bg-white px-5 py-4 flex gap-2.5 overflow-x-auto z-[998] shadow-[0_4px_10px_rgba(0,0,0,0.05)] scrollbar-hide">
+      <div className="sticky top-[52px] bg-card px-5 py-4 flex gap-2.5 overflow-x-auto z-[998] shadow-[0_4px_10px_rgba(0,0,0,0.05)] scrollbar-hide border-b border-border">
         {categoryNames.map(cat => (
           <button
             key={cat}
             onClick={() => scrollToCategory(cat)}
             className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-all flex items-center gap-1 ${
               activeCategory === cat
-                ? 'bg-black text-white'
-                : 'bg-[#f6f6f6] text-[#333]'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
             {cat === 'Favorites' && <Heart className="w-3 h-3" />}
             {cat}
             {cat === 'Favorites' && favorites.length > 0 && (
-              <span className="bg-white/20 px-1.5 rounded-full text-xs ml-1">{favorites.length}</span>
+              <span className="bg-primary-foreground/20 px-1.5 rounded-full text-xs ml-1">{favorites.length}</span>
             )}
           </button>
         ))}
@@ -1186,30 +1172,30 @@ export default function TableOrder() {
       {/* Cart Modal */}
       {cartModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[2000] flex items-end">
-          <div className="bg-white w-full rounded-t-[20px] p-8 max-h-[80vh] overflow-y-auto animate-slide-up">
+          <div className="bg-card w-full rounded-t-[20px] p-8 max-h-[80vh] overflow-y-auto animate-slide-up">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-2xl font-bold">Your Order</h2>
-              <button onClick={() => setCartModalOpen(false)} className="text-2xl">×</button>
+              <h2 className="text-2xl font-bold text-foreground">Your Order</h2>
+              <button onClick={() => setCartModalOpen(false)} className="text-2xl text-muted-foreground hover:text-foreground">×</button>
             </div>
             
             {cart.map(item => (
-              <div key={item.id} className="flex justify-between items-center mb-4 pb-3 border-b border-[#eee]">
+              <div key={item.id} className="flex justify-between items-center mb-4 pb-3 border-b border-border">
                 <div className="flex-1">
-                  <div className="font-semibold">{item.name}</div>
-                  <div className="text-[#666] text-sm">रू{item.price}</div>
+                  <div className="font-semibold text-foreground">{item.name}</div>
+                  <div className="text-muted-foreground text-sm">रू{item.price}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => updateQty(item.menuItemId, -1)}
-                      className="w-8 h-8 rounded-full bg-[#eee] font-bold flex items-center justify-center"
+                      className="w-8 h-8 rounded-full bg-muted font-bold flex items-center justify-center text-foreground hover:bg-muted/80"
                     >
                       -
                     </button>
-                    <span className="font-medium w-4 text-center">{item.qty}</span>
+                    <span className="font-medium w-4 text-center text-foreground">{item.qty}</span>
                     <button 
                       onClick={() => updateQty(item.menuItemId, 1)}
-                      className="w-8 h-8 rounded-full bg-[#eee] font-bold flex items-center justify-center"
+                      className="w-8 h-8 rounded-full bg-muted font-bold flex items-center justify-center text-foreground hover:bg-muted/80"
                     >
                       +
                     </button>
@@ -1225,9 +1211,9 @@ export default function TableOrder() {
               </div>
             ))}
 
-            <div className="mt-5 pt-5 border-t border-[#eee]">
+            <div className="mt-5 pt-5 border-t border-border">
               <div className="mb-4">
-                <label className="block text-sm font-medium text-[#666] mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Special Instructions (Optional)
                 </label>
                 <textarea
@@ -1235,21 +1221,21 @@ export default function TableOrder() {
                   onChange={(e) => setSpecialInstructions(e.target.value.slice(0, 100))}
                   placeholder="e.g., Less sugar, extra spicy..."
                   maxLength={100}
-                  className="w-full p-3 border-2 border-[#eee] rounded-lg text-sm resize-none outline-none focus:border-[#06C167]"
+                  className="w-full p-3 border-2 border-border rounded-lg text-sm resize-none outline-none focus:border-primary bg-background text-foreground"
                   rows={2}
                 />
-                <div className="text-xs text-[#999] text-right mt-1">
+                <div className="text-xs text-muted-foreground text-right mt-1">
                   {specialInstructions.length}/100
                 </div>
               </div>
-              <div className="flex justify-between font-bold text-xl mb-5">
+              <div className="flex justify-between font-bold text-xl mb-5 text-foreground">
                 <span>Total</span>
                 <span>रू{cartTotal}</span>
               </div>
               <button 
                 onClick={handleSubmitOrder}
                 disabled={isSubmitting}
-                className="w-full bg-black text-white p-4 rounded-lg text-lg font-semibold disabled:opacity-50"
+                className="w-full bg-primary text-primary-foreground p-4 rounded-lg text-lg font-semibold disabled:opacity-50"
               >
                 {isSubmitting ? 'Placing Order...' : 'Place Order'}
               </button>
@@ -1261,15 +1247,15 @@ export default function TableOrder() {
       {/* Success Modal */}
       {successModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[2000] flex items-end">
-          <div className="bg-white w-full rounded-t-[20px] p-8 text-center pb-10 animate-slide-up">
-            <div className="w-20 h-20 bg-[#27ae60] rounded-full mx-auto mb-5 flex items-center justify-center animate-[popIn_0.5s_cubic-bezier(0.68,-0.55,0.265,1.55)]">
+          <div className="bg-card w-full rounded-t-[20px] p-8 text-center pb-10 animate-slide-up">
+            <div className="w-20 h-20 bg-success rounded-full mx-auto mb-5 flex items-center justify-center animate-[popIn_0.5s_cubic-bezier(0.68,-0.55,0.265,1.55)]">
               <Check className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Order Placed!</h2>
-            <p className="text-[#666] mb-8">The counter has received your order.</p>
+            <h2 className="text-2xl font-bold mb-2 text-foreground">Order Placed!</h2>
+            <p className="text-muted-foreground mb-8">The counter has received your order.</p>
             <button 
               onClick={() => { setSuccessModalOpen(false); setBillModalOpen(true); }}
-              className="w-full bg-black text-white p-4 rounded-lg text-lg font-semibold"
+              className="w-full bg-primary text-primary-foreground p-4 rounded-lg text-lg font-semibold"
             >
               Okay
             </button>
@@ -1280,9 +1266,9 @@ export default function TableOrder() {
       {/* Bill Modal */}
       {billModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[2000] flex items-end">
-          <div className="bg-white w-full rounded-t-[20px] p-8 max-h-[80vh] overflow-y-auto animate-slide-up">
+          <div className="bg-card w-full rounded-t-[20px] p-8 max-h-[80vh] overflow-y-auto animate-slide-up">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-2xl font-bold">My Orders</h2>
+              <h2 className="text-2xl font-bold text-foreground">My Orders</h2>
               <button onClick={() => {
                 setBillModalOpen(false);
                 // Show install prompt after closing bill if not PWA and not shown before
@@ -1292,16 +1278,16 @@ export default function TableOrder() {
                     setHasShownInstallPrompt(true);
                   }, 500);
                 }
-              }} className="text-2xl">×</button>
+              }} className="text-2xl text-muted-foreground hover:text-foreground">×</button>
             </div>
             
             {myOrders.length === 0 ? (
-              <p className="text-center text-[#999] py-5">No active orders.</p>
+              <p className="text-center text-muted-foreground py-5">No active orders.</p>
             ) : (
               myOrders.map(order => (
-                <div key={order.id} className="mb-4 bg-[#f9f9f9] rounded-lg p-3">
+                <div key={order.id} className="mb-4 bg-muted/50 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-[#888]">Order #{order.id.slice(-6)}</span>
+                    <span className="text-xs text-muted-foreground">Order #{order.id.slice(-6)}</span>
                     {order.status === 'pending' && (
                       <button
                         onClick={() => {
@@ -1314,7 +1300,7 @@ export default function TableOrder() {
                             toast.error('Order already accepted, cannot cancel');
                           }
                         }}
-                        className="text-xs text-red-500 font-medium px-2 py-1 border border-red-200 rounded-full hover:bg-red-50"
+                        className="text-xs text-destructive font-medium px-2 py-1 border border-destructive/20 rounded-full hover:bg-destructive/10"
                       >
                         Cancel Order
                       </button>
@@ -1323,10 +1309,10 @@ export default function TableOrder() {
                   {order.items.map((item, idx) => {
                     const status = getStatusText(order.status);
                     return (
-                      <div key={idx} className="flex justify-between items-center py-2 border-b border-[#eee] last:border-b-0">
+                      <div key={idx} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
                         <div>
-                          <div className="font-semibold">{item.qty}x {item.name}</div>
-                          <div className="text-sm text-[#888]">रू{item.price * item.qty}</div>
+                          <div className="font-semibold text-foreground">{item.qty}x {item.name}</div>
+                          <div className="text-sm text-muted-foreground">रू{item.price * item.qty}</div>
                         </div>
                         <span style={{ color: status.color }} className="font-bold text-sm">
                           {status.text}
@@ -1338,8 +1324,8 @@ export default function TableOrder() {
               ))
             )}
 
-            <div className="mt-5 border-t border-[#eee] pt-4 text-right">
-              <h3 className="text-xl font-bold">Total Due: रू{totalDue}</h3>
+            <div className="mt-5 border-t border-border pt-4 text-right">
+              <h3 className="text-xl font-bold text-foreground">Total Due: रू{totalDue}</h3>
             </div>
           </div>
         </div>
@@ -1348,7 +1334,7 @@ export default function TableOrder() {
       {/* Subtle Install Prompt */}
       {showInstallPrompt && !isPWA() && (
         <div className="fixed bottom-0 left-0 right-0 z-[2000] animate-slide-up">
-          <div className="bg-white border-t border-[#eee] shadow-[0_-4px_20px_rgba(0,0,0,0.1)] p-4 mx-auto max-w-md rounded-t-2xl">
+          <div className="bg-card border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.1)] p-4 mx-auto max-w-md rounded-t-2xl">
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
                 {settings.logo ? (
@@ -1358,12 +1344,12 @@ export default function TableOrder() {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-[#333]">Install our app?</h3>
-                <p className="text-sm text-[#666] mt-0.5">Order faster next time with one tap</p>
+                <h3 className="font-semibold text-foreground">Install our app?</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">Order faster next time with one tap</p>
               </div>
               <button
                 onClick={() => setShowInstallPrompt(false)}
-                className="text-[#999] text-xl leading-none p-1"
+                className="text-muted-foreground text-xl leading-none p-1 hover:text-foreground"
               >
                 ×
               </button>
@@ -1371,7 +1357,7 @@ export default function TableOrder() {
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => setShowInstallPrompt(false)}
-                className="flex-1 py-2.5 px-4 rounded-full border border-[#ddd] text-[#666] font-medium text-sm"
+                className="flex-1 py-2.5 px-4 rounded-full border border-border text-muted-foreground font-medium text-sm hover:bg-muted"
               >
                 Not now
               </button>
@@ -1386,7 +1372,7 @@ export default function TableOrder() {
                     setDeferredPrompt(null);
                     setShowInstallPrompt(false);
                   }}
-                  className="flex-1 py-2.5 px-4 rounded-full bg-black text-white font-medium text-sm"
+                  className="flex-1 py-2.5 px-4 rounded-full bg-primary text-primary-foreground font-medium text-sm"
                 >
                   Install App
                 </button>
@@ -1395,7 +1381,7 @@ export default function TableOrder() {
                   onClick={() => {
                     navigate('/install');
                   }}
-                  className="flex-1 py-2.5 px-4 rounded-full bg-black text-white font-medium text-sm"
+                  className="flex-1 py-2.5 px-4 rounded-full bg-primary text-primary-foreground font-medium text-sm"
                 >
                   How to Install
                 </button>
@@ -1416,7 +1402,7 @@ export default function TableOrder() {
                 setBillModalOpen(true);
                 setFabOpen(false);
               }}
-              className="flex items-center gap-2 bg-white border border-[#eee] shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-[#333] fab-item-1"
+              className="flex items-center gap-2 bg-card border border-border shadow-lg px-4 py-3 rounded-full text-sm font-semibold text-foreground fab-item-1"
             >
               <FileText className="w-4 h-4" /> My Bill
             </button>
