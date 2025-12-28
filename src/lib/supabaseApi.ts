@@ -349,6 +349,16 @@ export const ordersApi = {
     if (error) throw error;
     return mapOrderFromDb(data);
   },
+  updateCustomerPhone: async (id: string, newPhone: string) => {
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ customer_phone: newPhone, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapOrderFromDb(data);
+  },
 };
 
 // Bills API
@@ -378,6 +388,29 @@ export const billsApi = {
         paid_at: new Date().toISOString(),
         status: 'paid',
       })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapBillFromDb(data);
+  },
+  updateCustomerPhone: async (id: string, oldPhone: string, newPhone: string) => {
+    // Get the current bill first
+    const { data: currentBill, error: fetchError } = await supabase
+      .from('bills')
+      .select('customer_phones')
+      .eq('id', id)
+      .single();
+    if (fetchError) throw fetchError;
+    
+    // Update the customer phones array
+    const updatedPhones = (currentBill.customer_phones || []).map((p: string) => 
+      p === oldPhone ? newPhone : p
+    );
+    
+    const { data, error } = await supabase
+      .from('bills')
+      .update({ customer_phones: updatedPhones })
       .eq('id', id)
       .select()
       .single();
@@ -578,6 +611,29 @@ export const transactionsApi = {
     const { data, error } = await supabase
       .from('transactions')
       .insert(mapTransactionToDb(transaction))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapTransactionFromDb(data);
+  },
+  updateCustomerPhone: async (id: string, oldPhone: string, newPhone: string) => {
+    // Get the current transaction first
+    const { data: currentTx, error: fetchError } = await supabase
+      .from('transactions')
+      .select('customer_phones')
+      .eq('id', id)
+      .single();
+    if (fetchError) throw fetchError;
+    
+    // Update the customer phones array
+    const updatedPhones = (currentTx.customer_phones || []).map((p: string) => 
+      p === oldPhone ? newPhone : p
+    );
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .update({ customer_phones: updatedPhones })
+      .eq('id', id)
       .select()
       .single();
     if (error) throw error;

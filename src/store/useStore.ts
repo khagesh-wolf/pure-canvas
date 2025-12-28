@@ -487,15 +487,63 @@ export const useStore = create<StoreState>()((set, get) => ({
       throw new Error('Phone number already exists');
     }
     
-    // Update locally first
+    // Update customer record
     set({
       customers: state.customers.map(c =>
         c.phone === oldPhone ? { ...c, phone: newPhone } : c
       )
     });
     
-    // Sync to backend
+    // Update all orders with the old phone number
+    set((s) => ({
+      orders: s.orders.map(o =>
+        o.customerPhone === oldPhone ? { ...o, customerPhone: newPhone } : o
+      )
+    }));
+    
+    // Update all transactions with the old phone number
+    set((s) => ({
+      transactions: s.transactions.map(t => ({
+        ...t,
+        customerPhones: t.customerPhones.map(p => p === oldPhone ? newPhone : p)
+      }))
+    }));
+    
+    // Update all bills with the old phone number
+    set((s) => ({
+      bills: s.bills.map(b => ({
+        ...b,
+        customerPhones: b.customerPhones.map(p => p === oldPhone ? newPhone : p)
+      }))
+    }));
+    
+    // Store the phone change in localStorage to notify customer pages
+    const phoneChanges = JSON.parse(localStorage.getItem('sajilo:phoneChanges') || '[]');
+    phoneChanges.push({ oldPhone, newPhone, timestamp: Date.now() });
+    // Keep only changes from the last hour
+    const recentChanges = phoneChanges.filter((c: any) => Date.now() - c.timestamp < 3600000);
+    localStorage.setItem('sajilo:phoneChanges', JSON.stringify(recentChanges));
+    
+    // Sync all changes to backend
     await customersApi.updatePhone(oldPhone, newPhone);
+    
+    // Update orders in database
+    const ordersToUpdate = state.orders.filter(o => o.customerPhone === oldPhone);
+    for (const order of ordersToUpdate) {
+      await ordersApi.updateCustomerPhone(order.id, newPhone);
+    }
+    
+    // Update transactions in database
+    const transactionsToUpdate = state.transactions.filter(t => t.customerPhones.includes(oldPhone));
+    for (const tx of transactionsToUpdate) {
+      await transactionsApi.updateCustomerPhone(tx.id, oldPhone, newPhone);
+    }
+    
+    // Update bills in database
+    const billsToUpdate = state.bills.filter(b => b.customerPhones.includes(oldPhone));
+    for (const bill of billsToUpdate) {
+      await billsApi.updateCustomerPhone(bill.id, oldPhone, newPhone);
+    }
   },
 
   // Staff - uses defaults until loaded from backend

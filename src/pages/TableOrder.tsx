@@ -236,6 +236,39 @@ export default function TableOrder() {
     return () => clearInterval(interval);
   }, [navigate]);
 
+  // Check if phone was changed by admin - log out and ask to re-login with new number
+  useEffect(() => {
+    if (!phone || !isPhoneEntered) return;
+    
+    const checkPhoneChanges = () => {
+      const phoneChanges = JSON.parse(localStorage.getItem('sajilo:phoneChanges') || '[]');
+      const change = phoneChanges.find((c: any) => c.oldPhone === phone);
+      
+      if (change) {
+        // Phone was changed by admin - notify customer and ask to re-login
+        toast.info(`Your phone number has been updated to ${change.newPhone}. Please login again.`);
+        
+        // Clear the session
+        localStorage.removeItem('sajilo:customerActiveSession');
+        localStorage.removeItem('sajilo:customerPhone');
+        
+        // Store the new phone so they can easily login with it
+        localStorage.setItem('sajilo:suggestedPhone', change.newPhone);
+        
+        // Reset state
+        setPhone('');
+        setIsPhoneEntered(false);
+        setCart([]);
+      }
+    };
+    
+    // Check immediately and then every 5 seconds
+    checkPhoneChanges();
+    const interval = setInterval(checkPhoneChanges, 5000);
+    
+    return () => clearInterval(interval);
+  }, [phone, isPhoneEntered]);
+
   // Validate table number and handle session
   useEffect(() => {
     if (!table || table < 1 || table > settings.tableCount) {
@@ -533,8 +566,17 @@ export default function TableOrder() {
   const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Use suggested phone if current phone is empty
+    const suggestedPhone = localStorage.getItem('sajilo:suggestedPhone');
+    const phoneToUse = phone || suggestedPhone || '';
+    
+    // If we're using suggested phone, set it to state first
+    if (!phone && suggestedPhone) {
+      setPhone(suggestedPhone);
+    }
+    
     // Validate phone number
-    const phoneValidation = validateInput(phoneSchema, phone);
+    const phoneValidation = validateInput(phoneSchema, phoneToUse);
     if (!phoneValidation.success) {
       toast.error(phoneValidation.error);
       return;
@@ -546,7 +588,10 @@ export default function TableOrder() {
       const phoneKey = 'sajilo:customerPhone';
       
       // Save phone permanently (survives table expiry)
-      localStorage.setItem(phoneKey, phone);
+      localStorage.setItem(phoneKey, phoneToUse);
+      
+      // Clear the suggested phone since login succeeded
+      localStorage.removeItem('sajilo:suggestedPhone');
       
       // Check for existing session token or generate new one
       let sessionToken = generateSessionToken();
@@ -564,7 +609,7 @@ export default function TableOrder() {
       
       localStorage.setItem(sessionKey, JSON.stringify({ 
         table: lockedTable, 
-        phone, 
+        phone: phoneToUse, 
         isPhoneEntered: true,
         tableTimestamp: Date.now(),
         timestamp: Date.now(),
@@ -572,6 +617,7 @@ export default function TableOrder() {
       }));
     }
 
+    setPhone(phoneToUse);
     setIsPhoneEntered(true);
   };
 
@@ -764,32 +810,47 @@ export default function TableOrder() {
     );
   }
 
+  // Check for suggested phone (after admin change)
+  const suggestedPhone = typeof window !== 'undefined' ? localStorage.getItem('sajilo:suggestedPhone') : null;
+
   // Phone entry screen (Login Modal Style)
   if (!isPhoneEntered) {
     return (
       <div className="min-h-screen bg-black/50 flex items-end justify-center">
-        <div className="bg-white w-full rounded-t-[20px] p-8 animate-slide-up">
-          <h2 className="text-2xl font-bold mb-2">Let's start ordering</h2>
-          <p className="text-[#666] mb-5">Enter your mobile number to continue.</p>
-          <form onSubmit={handlePhoneSubmit}>
+        <div className="bg-card w-full rounded-t-[20px] p-8 animate-slide-up">
+          <h2 className="text-2xl font-bold mb-2 text-foreground">Let's start ordering</h2>
+          {suggestedPhone ? (
+            <p className="text-muted-foreground mb-5">Your phone was updated. Please login with your new number.</p>
+          ) : (
+            <p className="text-muted-foreground mb-5">Enter your mobile number to continue.</p>
+          )}
+          <form onSubmit={(e) => {
+            // Clear suggested phone on submit
+            localStorage.removeItem('sajilo:suggestedPhone');
+            handlePhoneSubmit(e);
+          }}>
             <input
               type="tel"
-              placeholder="98XXXXXXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              className="w-full p-4 border-2 border-[#eee] rounded-lg text-lg mb-4 outline-none focus:border-[#06C167]"
+              placeholder={suggestedPhone || "98XXXXXXXX"}
+              value={phone || suggestedPhone || ''}
+              onChange={(e) => {
+                // Clear suggested phone when user starts typing
+                if (suggestedPhone) localStorage.removeItem('sajilo:suggestedPhone');
+                setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+              }}
+              className="w-full p-4 border-2 border-border rounded-lg text-lg mb-4 outline-none focus:border-primary bg-background text-foreground"
               maxLength={10}
               autoFocus
             />
             <button
               type="submit"
-              disabled={phone.length < 10}
-              className="w-full bg-black text-white p-4 rounded-lg text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={phone.length < 10 && (!suggestedPhone || suggestedPhone.length < 10)}
+              className="w-full bg-primary text-primary-foreground p-4 rounded-lg text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue
             </button>
           </form>
-          <p className="text-xs text-center text-[#999] mt-6">
+          <p className="text-xs text-center text-muted-foreground mt-6">
             Table {table} • {formatNepalTime(new Date())}
           </p>
         </div>
