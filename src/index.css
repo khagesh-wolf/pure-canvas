@@ -14,33 +14,33 @@
 
 @layer base {
   :root {
-    /* Modern dashboard palette - Clean & Professional */
-    --background: 230 25% 97%;
-    --foreground: 230 25% 10%;
+    /* Modern SaaS palette - Clean, Professional, Cohesive */
+    --background: 220 16% 96%;
+    --foreground: 224 71% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 10%;
+    --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 10%;
+    --popover-foreground: 224 71% 4%;
 
-    /* Deep indigo primary */
+    /* Deep indigo primary - professional & trustworthy */
     --primary: 234 89% 54%;
     --primary-foreground: 0 0% 100%;
 
-    /* Soft purple secondary */
-    --secondary: 250 70% 96%;
-    --secondary-foreground: 234 89% 54%;
+    /* Subtle secondary */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 224 71% 4%;
 
-    /* Muted cool tones */
-    --muted: 230 20% 94%;
-    --muted-foreground: 230 15% 50%;
+    /* Muted surfaces */
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 9% 46%;
 
-    /* Accent - soft lavender */
-    --accent: 250 70% 96%;
-    --accent-foreground: 234 89% 54%;
+    /* Accent - soft indigo tint */
+    --accent: 234 89% 97%;
+    --accent-foreground: 234 89% 40%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 152 69% 40%;
@@ -49,48 +49,52 @@
     --warning: 38 92% 50%;
     --warning-foreground: 24 10% 10%;
 
-    --border: 230 20% 90%;
-    --input: 230 20% 90%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: 234 89% 54%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
-    /* Sidebar - light theme to match dashboard */
+    /* Sidebar - light theme */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 230 25% 30%;
+    --sidebar-foreground: 220 9% 46%;
     --sidebar-primary: 234 89% 54%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 250 70% 96%;
-    --sidebar-accent-foreground: 234 89% 54%;
-    --sidebar-border: 230 20% 92%;
+    --sidebar-accent: 234 89% 97%;
+    --sidebar-accent-foreground: 234 89% 40%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 234 89% 54%;
+
+    /* Dark sidebar for POS-style interface */
+    --sidebar-dark-background: 224 71% 8%;
+    --sidebar-dark-foreground: 220 14% 96%;
   }
 
   .dark {
-    /* Dark theme - Professional dark mode */
-    --background: 230 25% 10%;
-    --foreground: 230 15% 95%;
+    /* Dark theme - Sophisticated & Professional */
+    --background: 224 71% 4%;
+    --foreground: 220 14% 96%;
 
-    --card: 230 25% 14%;
-    --card-foreground: 230 15% 95%;
+    --card: 224 71% 8%;
+    --card-foreground: 220 14% 96%;
 
-    --popover: 230 25% 12%;
-    --popover-foreground: 230 15% 95%;
+    --popover: 224 71% 6%;
+    --popover-foreground: 220 14% 96%;
 
-    /* Deep indigo primary */
+    /* Deep indigo primary - slightly brighter for dark mode */
     --primary: 234 89% 64%;
-    --primary-foreground: 230 25% 10%;
+    --primary-foreground: 224 71% 4%;
 
     /* Darker secondary */
-    --secondary: 250 30% 20%;
-    --secondary-foreground: 234 89% 74%;
+    --secondary: 224 71% 12%;
+    --secondary-foreground: 220 14% 96%;
 
     /* Muted dark tones */
-    --muted: 230 20% 18%;
-    --muted-foreground: 230 15% 60%;
+    --muted: 224 71% 14%;
+    --muted-foreground: 220 9% 60%;
 
-    /* Accent - dark lavender */
-    --accent: 250 30% 22%;
+    /* Accent - dark indigo tint */
+    --accent: 234 50% 18%;
     --accent-foreground: 234 89% 74%;
 
     --destructive: 0 72% 51%;
@@ -102,18 +106,18 @@
     --warning: 38 92% 55%;
     --warning-foreground: 24 10% 10%;
 
-    --border: 230 20% 22%;
-    --input: 230 20% 22%;
+    --border: 224 71% 16%;
+    --input: 224 71% 16%;
     --ring: 234 89% 64%;
 
     /* Sidebar - dark theme */
-    --sidebar-background: 230 25% 12%;
-    --sidebar-foreground: 230 15% 80%;
+    --sidebar-background: 224 71% 6%;
+    --sidebar-foreground: 220 9% 70%;
     --sidebar-primary: 234 89% 64%;
-    --sidebar-primary-foreground: 230 25% 10%;
-    --sidebar-accent: 250 30% 20%;
+    --sidebar-primary-foreground: 224 71% 4%;
+    --sidebar-accent: 234 50% 18%;
     --sidebar-accent-foreground: 234 89% 74%;
-    --sidebar-border: 230 20% 20%;
+    --sidebar-border: 224 71% 14%;
     --sidebar-ring: 234 89% 64%;
   }
 }
@@ -130,40 +134,51 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    font-feature-settings: "cv11", "ss01";
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.025em;
   }
 }
 
 @layer components {
-  /* Card shadows - softer, more modern */
+  /* Card shadows - Modern SaaS style */
   .card-shadow {
-    box-shadow: 0 1px 3px 0 hsl(230 25% 20% / 0.04), 0 1px 2px -1px hsl(230 25% 20% / 0.04);
+    box-shadow: 0 1px 2px 0 hsl(220 9% 46% / 0.05);
   }
 
   .card-shadow-lg {
-    box-shadow: 0 10px 25px -5px hsl(230 25% 20% / 0.05), 0 8px 10px -6px hsl(230 25% 20% / 0.03);
+    box-shadow: 
+      0 0 0 1px hsl(220 13% 91% / 0.6),
+      0 4px 6px -1px hsl(220 9% 46% / 0.08),
+      0 2px 4px -2px hsl(220 9% 46% / 0.06);
   }
 
   .card-shadow-xl {
-    box-shadow: 0 20px 40px -10px hsl(230 25% 20% / 0.08), 0 10px 20px -10px hsl(230 25% 20% / 0.04);
+    box-shadow: 
+      0 0 0 1px hsl(220 13% 91% / 0.6),
+      0 20px 25px -5px hsl(220 9% 46% / 0.08),
+      0 8px 10px -6px hsl(220 9% 46% / 0.05);
   }
 
   /* Hover effects for clickable elements */
   .hover-lift {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 ease-out;
   }
   
   .hover-lift:hover {
-    @apply -translate-y-0.5 shadow-lg;
+    @apply -translate-y-0.5;
+    box-shadow: 
+      0 0 0 1px hsl(220 13% 91% / 0.6),
+      0 8px 16px -4px hsl(220 9% 46% / 0.1),
+      0 4px 6px -2px hsl(220 9% 46% / 0.06);
   }
   
   .hover-lift:active {
-    @apply translate-y-0 scale-[0.98];
+    @apply translate-y-0 scale-[0.99];
   }
 
   .hover-glow {
@@ -171,148 +186,145 @@
   }
   
   .hover-glow:hover {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+    box-shadow: 0 0 24px hsl(var(--primary) / 0.2);
   }
 
-  /* Gradients - updated for new palette */
+  /* Gradients - Professional indigo palette */
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(234 89% 54%) 0%, hsl(250 80% 60%) 100%);
+    background: linear-gradient(135deg, hsl(234 89% 54%) 0%, hsl(250 70% 56%) 100%);
   }
 
   .gradient-primary-soft {
-    background: linear-gradient(135deg, hsl(234 89% 54% / 0.08) 0%, hsl(250 80% 60% / 0.08) 100%);
+    background: linear-gradient(135deg, hsl(234 89% 97%) 0%, hsl(250 70% 96%) 100%);
   }
 
   .gradient-dark {
-    background: linear-gradient(135deg, hsl(234 40% 20%) 0%, hsl(234 40% 30%) 100%);
+    background: linear-gradient(180deg, hsl(224 71% 8%) 0%, hsl(224 71% 12%) 100%);
   }
 
   .gradient-warm {
-    background: linear-gradient(135deg, hsl(230 25% 97%) 0%, hsl(250 30% 95%) 100%);
+    background: linear-gradient(180deg, hsl(220 16% 96%) 0%, hsl(220 14% 94%) 100%);
   }
 
-  /* Stat card gradients - soft purple/lavender tones */
-  .gradient-stat-1 {
-    background: linear-gradient(135deg, hsl(250 80% 98%) 0%, hsl(250 60% 95%) 100%);
+  /* POS Dark Sidebar gradient */
+  .gradient-sidebar-dark {
+    background: linear-gradient(180deg, hsl(224 71% 10%) 0%, hsl(224 71% 6%) 100%);
   }
 
-  .gradient-stat-2 {
-    background: linear-gradient(135deg, hsl(234 80% 97%) 0%, hsl(234 60% 94%) 100%);
-  }
-
-  .gradient-stat-3 {
-    background: linear-gradient(135deg, hsl(200 80% 97%) 0%, hsl(200 60% 94%) 100%);
-  }
-
-  /* Glass effect */
+  /* Glass effect - Clean & Modern */
   .glass {
-    background: hsl(0 0% 100% / 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: hsl(0 0% 100% / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   .glass-dark {
-    background: hsl(234 40% 20% / 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: hsl(224 71% 8% / 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
-  /* Status badges */
+  /* Status badges - Consistent across app */
   .status-pending {
-    @apply bg-warning/15 text-warning border border-warning/20;
+    @apply bg-warning/10 text-warning font-medium;
   }
 
   .status-preparing {
-    @apply bg-primary/10 text-primary border border-primary/20;
+    @apply bg-primary/10 text-primary font-medium;
   }
 
   .status-ready {
-    @apply bg-success/15 text-success border border-success/20;
+    @apply bg-success/10 text-success font-medium;
   }
 
   .status-served {
-    @apply bg-muted text-muted-foreground border border-border;
+    @apply bg-muted text-muted-foreground font-medium;
   }
 
   .status-paid {
-    @apply bg-primary/15 text-primary border border-primary/20;
+    @apply bg-success/10 text-success font-medium;
   }
 
   .status-cancelled {
-    @apply bg-destructive/15 text-destructive border border-destructive/20;
+    @apply bg-destructive/10 text-destructive font-medium;
   }
 
-  /* Navigation */
+  /* Navigation - Clean & Professional */
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200;
   }
 
   .nav-item-active {
-    @apply bg-primary text-primary-foreground shadow-lg;
-    box-shadow: 0 4px 14px 0 hsl(234 89% 54% / 0.35);
+    @apply bg-primary text-primary-foreground shadow-sm;
   }
 
   .nav-item-inactive {
-    @apply text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent;
+    @apply text-muted-foreground hover:text-foreground hover:bg-muted;
   }
 
-  /* Form elements */
+  /* Form elements - Modern & Clean */
   .input-field {
-    @apply w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200;
+    @apply w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
   }
 
-  /* Buttons */
+  /* Buttons - Professional variants */
   .btn-primary {
-    @apply bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-all duration-200;
-    box-shadow: 0 4px 14px 0 hsl(234 89% 54% / 0.35);
+    @apply bg-primary text-primary-foreground font-medium py-2.5 px-4 rounded-lg hover:bg-primary/90 transition-all duration-200 shadow-sm;
   }
 
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-secondary/80 transition-all duration-200;
+    @apply bg-secondary text-secondary-foreground font-medium py-2.5 px-4 rounded-lg hover:bg-secondary/80 transition-all duration-200;
   }
 
   .btn-ghost {
-    @apply bg-transparent text-foreground font-medium py-2 px-4 rounded-lg hover:bg-muted transition-all duration-200;
+    @apply bg-transparent text-foreground font-medium py-2 px-3 rounded-lg hover:bg-muted transition-all duration-200;
   }
 
-  /* Cards */
+  /* Cards - Consistent styling */
   .menu-card {
-    @apply bg-card rounded-2xl border border-border card-shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+    @apply bg-card rounded-xl border border-border overflow-hidden transition-all duration-200;
+  }
+
+  .menu-card:hover {
+    @apply shadow-lg -translate-y-0.5;
   }
 
   .stat-card {
-    @apply bg-card p-6 rounded-2xl border border-border/50 card-shadow transition-all duration-200 hover:card-shadow-lg;
+    @apply bg-card p-5 rounded-xl border border-border transition-all duration-200;
+  }
+
+  .stat-card:hover {
+    @apply shadow-lg;
   }
 
   /* Icon container for stat cards */
   .stat-icon {
-    @apply w-14 h-14 rounded-2xl flex items-center justify-center;
-    background: linear-gradient(135deg, hsl(250 80% 96%) 0%, hsl(250 60% 92%) 100%);
+    @apply w-11 h-11 rounded-lg flex items-center justify-center bg-primary/10;
   }
 
   .stat-icon-primary {
-    background: linear-gradient(135deg, hsl(234 89% 96%) 0%, hsl(234 70% 92%) 100%);
+    @apply bg-primary/10;
   }
 
   .stat-icon-success {
-    background: linear-gradient(135deg, hsl(152 60% 95%) 0%, hsl(152 50% 90%) 100%);
+    @apply bg-success/10;
   }
 
   .stat-icon-warning {
-    background: linear-gradient(135deg, hsl(38 80% 95%) 0%, hsl(38 70% 90%) 100%);
+    @apply bg-warning/10;
   }
 
   /* Animations */
   .animate-slide-up {
-    animation: slide-up 0.4s ease-out;
+    animation: slide-up 0.3s ease-out;
   }
 
   .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
+    animation: fade-in 0.2s ease-out;
   }
 
   .animate-scale-in {
-    animation: scale-in 0.3s ease-out;
+    animation: scale-in 0.2s ease-out;
   }
 
   /* Interactive elements */
@@ -325,30 +337,41 @@
   }
 
   .interactive:active {
-    @apply translate-y-0 scale-[0.98];
+    @apply translate-y-0 scale-[0.99];
   }
 
-  /* Page header */
+  /* Page header - Clean & Professional */
   .page-header {
-    @apply sticky top-0 z-40 glass border-b border-border/50;
+    @apply sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border;
   }
 
   /* Sidebar styles */
   .sidebar {
-    @apply bg-sidebar border-r border-sidebar-border;
+    @apply bg-card border-r border-border;
   }
 
   .sidebar-header {
-    @apply p-6 border-b border-sidebar-border;
+    @apply p-5 border-b border-border;
   }
 
   .sidebar-content {
-    @apply p-4 space-y-1;
+    @apply p-3 space-y-1;
+  }
+
+  /* POS Dark Sidebar */
+  .pos-sidebar {
+    @apply text-white;
+    background: linear-gradient(180deg, hsl(224 71% 10%) 0%, hsl(224 71% 6%) 100%);
+  }
+
+  .pos-sidebar-header {
+    @apply p-5 border-b border-white/10;
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.08) 0%, hsl(0 0% 100% / 0.02) 100%);
   }
 
   /* Tag/pill styles */
   .pill {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
   }
 
   .pill-primary {
@@ -363,17 +386,59 @@
     @apply bg-muted text-muted-foreground;
   }
 
-  /* Toggle tabs like in dashboard */
+  /* Toggle tabs - Clean pill style */
   .tab-toggle {
-    @apply inline-flex items-center gap-1 p-1 bg-muted rounded-xl;
+    @apply inline-flex items-center gap-0.5 p-1 bg-muted rounded-lg;
   }
 
   .tab-toggle-item {
-    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-muted-foreground;
+    @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 text-muted-foreground;
   }
 
   .tab-toggle-item-active {
     @apply bg-card text-foreground shadow-sm;
+  }
+
+  /* Order card styles for Counter/Kitchen */
+  .order-card {
+    @apply bg-card rounded-xl border border-border p-4 transition-all duration-200;
+  }
+
+  .order-card:hover {
+    @apply shadow-lg;
+  }
+
+  .order-card-pending {
+    @apply border-l-4 border-l-warning;
+  }
+
+  .order-card-accepted {
+    @apply border-l-4 border-l-primary;
+  }
+
+  .order-card-ready {
+    @apply border-l-4 border-l-success;
+  }
+
+  /* Table grid for POS */
+  .table-grid-item {
+    @apply bg-card rounded-xl border border-border p-4 flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer;
+  }
+
+  .table-grid-item:hover {
+    @apply shadow-lg border-primary/30;
+  }
+
+  .table-grid-item-occupied {
+    @apply bg-primary/5 border-primary/30;
+  }
+
+  .table-grid-item-pending {
+    @apply bg-warning/5 border-warning/30;
+  }
+
+  .table-grid-item-ready {
+    @apply bg-success/5 border-success/30;
   }
 }
 
@@ -421,7 +486,7 @@
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -441,7 +506,7 @@
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -454,18 +519,21 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.7;
+    opacity: 0.6;
   }
 }
 
-/* Print styles for 80mm thermal printer */
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
 /* Heart favorite animation */
 @keyframes heart-pop {
   0% {
     transform: scale(1);
   }
   25% {
-    transform: scale(1.3);
+    transform: scale(1.2);
   }
   50% {
     transform: scale(0.95);
@@ -485,13 +553,13 @@
     transform: scale(1);
   }
   30% {
-    transform: scale(0.9);
+    transform: scale(0.92);
   }
   50% {
-    transform: scale(1.1);
+    transform: scale(1.08);
   }
   70% {
-    transform: scale(0.95);
+    transform: scale(0.96);
   }
   100% {
     transform: scale(1);

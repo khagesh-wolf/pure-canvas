@@ -542,10 +542,10 @@ export default function Counter() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-[#f0f2f5] overflow-hidden relative">
+    <div className="flex flex-col lg:flex-row h-screen bg-background overflow-hidden relative">
       {/* Mobile Bottom Popup - Orders & Waiter Calls */}
       {(pendingOrders.length > 0 || getPendingWaiterCalls().length > 0) && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-t-2xl shadow-2xl max-h-[45vh] flex flex-col animate-slide-up">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pos-sidebar rounded-t-2xl shadow-2xl max-h-[45vh] flex flex-col animate-slide-up">
           {/* Handle bar */}
           <div className="flex justify-center py-2">
             <div className="w-10 h-1 bg-white/30 rounded-full" />
@@ -567,11 +567,7 @@ export default function Counter() {
             {getPendingWaiterCalls().slice(0, 2).map(call => (
               <div 
                 key={call.id} 
-                className="rounded-xl p-3 relative overflow-hidden"
-                style={{
-                  background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                  boxShadow: '0 4px 12px rgba(251,191,36,0.3)'
-                }}
+                className="rounded-xl p-3 relative overflow-hidden bg-warning/10 border border-warning/20"
               >
                 <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
                 <div className="flex justify-between items-center mb-2">
@@ -745,12 +741,7 @@ export default function Counter() {
       )}
 
       {/* Sidebar - Incoming Orders & Waiter Calls - Hidden on mobile, shown on lg+ */}
-      <div className="hidden lg:flex w-[350px] text-white flex-col relative overflow-hidden flex-shrink-0"
-        style={{
-          background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-          boxShadow: 'inset -2px 0 8px rgba(0,0,0,0.3), 4px 0 20px rgba(0,0,0,0.4)'
-        }}
-      >
+      <div className="hidden lg:flex w-[350px] pos-sidebar flex-col relative overflow-hidden flex-shrink-0">
         {/* Decorative 3D elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/5 to-transparent" />
@@ -901,7 +892,7 @@ export default function Counter() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header - Responsive: All in one row, wraps if needed */}
-        <div className="bg-white p-3 md:p-5 shadow-sm">
+        <div className="bg-card border-b border-border p-3 md:p-5">
           <div className="flex flex-wrap items-center gap-2">
             {/* Title */}
             <h2 className="text-lg md:text-xl font-bold whitespace-nowrap mr-auto sm:mr-0">Counter</h2>
@@ -910,10 +901,10 @@ export default function Counter() {
             <div className="flex items-center gap-1.5 overflow-x-auto order-last sm:order-none w-full sm:w-auto sm:flex-1 sm:justify-start mt-2 sm:mt-0 sm:ml-4">
               <button 
                 onClick={() => setActiveTab('active')}
-                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'active' 
-                    ? 'bg-[#333] text-white' 
-                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-card border border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 Active Bills
@@ -930,20 +921,20 @@ export default function Counter() {
               
               <button 
                 onClick={() => setActiveTab('accepted')}
-                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'accepted' 
-                    ? 'bg-[#333] text-white' 
-                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-card border border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 Accepted
               </button>
               <button 
                 onClick={() => setActiveTab('history')}
-                className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'history' 
-                    ? 'bg-[#333] text-white' 
-                    : 'bg-white border border-[#ddd] text-[#555] hover:bg-gray-50'
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-card border border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 History
@@ -974,7 +965,7 @@ export default function Counter() {
                 size="sm"
                 className={`h-8 text-xs flex items-center gap-1 ${
                   activeTab === 'expenses' 
-                    ? 'bg-[#333] text-white border-[#333] hover:bg-[#333]/90' 
+                    ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
                     : ''
                 }`}
               >
@@ -1004,35 +995,35 @@ export default function Counter() {
                 <div 
                   key={group.key}
                   onClick={() => toggleSelectBill(group.phone)}
-                  className={`bg-white w-[280px] p-5 rounded-lg border cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg ${
+                  className={`bg-card w-[280px] p-5 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
                     selectedPhones.includes(group.phone) 
-                      ? 'border-2 border-[#27ae60] bg-[#f0fdf4]' 
-                      : 'border-[#eee]'
+                      ? 'border-2 border-success bg-success/5 shadow-md' 
+                      : 'border-border'
                   }`}
                 >
-                  <div className="flex justify-between font-bold mb-2 border-b border-dashed border-[#eee] pb-1">
-                    <span>{group.phone}</span>
-                    <span>Table {group.tableNumber}</span>
+                  <div className="flex justify-between font-semibold mb-2 border-b border-dashed border-border pb-2">
+                    <span className="text-foreground">{group.phone}</span>
+                    <span className="text-muted-foreground">Table {group.tableNumber}</span>
                   </div>
-                  <div className="mb-2">
+                  <div className="mb-3 space-y-1">
                     {group.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm">
+                      <div key={idx} className="flex justify-between text-sm text-muted-foreground">
                         <span>{item.qty}x {item.name}</span>
                         <span>{item.total}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="font-bold text-right text-lg border-t border-[#eee] pt-2">
+                  <div className="font-bold text-right text-lg border-t border-border pt-2 text-foreground">
                     रू{group.subtotal}
                   </div>
                   {group.points > 0 && (
-                    <div className="text-xs text-[#f39c12] mt-1">⭐ {group.points} points available</div>
+                    <div className="text-xs text-warning mt-1">⭐ {group.points} points available</div>
                   )}
-                  <div className="text-xs text-[#888] mt-1">{formatNepalTime(group.createdAt)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{formatNepalTime(group.createdAt)}</div>
                 </div>
               ))}
               {billGroups.length === 0 && (
-                <div className="w-full text-center text-[#aaa] py-12">No unpaid bills found.</div>
+                <div className="w-full text-center text-muted-foreground py-12">No unpaid bills found.</div>
               )}
               {billGroups.length > billsLimit && (
                 <div className="w-full text-center mt-4">
@@ -1046,23 +1037,23 @@ export default function Counter() {
 
           {/* Accepted Orders Tab */}
           {activeTab === 'accepted' && (
-            <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+            <div className="bg-card rounded-xl overflow-hidden border border-border">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse min-w-[600px]">
-                  <thead className="bg-[#f8f9fa]">
+                  <thead className="bg-muted">
                     <tr>
-                      <th className="p-3 md:p-4 text-left font-bold text-[#555] text-sm">ID</th>
-                      <th className="p-3 md:p-4 text-left font-bold text-[#555] text-sm">Time</th>
-                      <th className="p-3 md:p-4 text-left font-bold text-[#555] text-sm">Table</th>
-                      <th className="p-3 md:p-4 text-left font-bold text-[#555] text-sm">Customer</th>
-                      <th className="p-3 md:p-4 text-left font-bold text-[#555] text-sm">Items</th>
-                      <th className="p-3 md:p-4 text-left font-bold text-[#555] text-sm">Total</th>
+                      <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">ID</th>
+                      <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Time</th>
+                      <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Table</th>
+                      <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Customer</th>
+                      <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Items</th>
+                      <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAcceptedOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-[#aaa]">No accepted orders.</td>
+                        <td colSpan={6} className="text-center py-8 text-muted-foreground">No accepted orders.</td>
                       </tr>
                     ) : (
                       filteredAcceptedOrders.slice(0, acceptedLimit).map(order => (
