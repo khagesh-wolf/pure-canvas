@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { MenuItem, Customer, Staff } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,9 @@ export default function Admin() {
   
   // Theme hook
   const { theme, setTheme } = useTheme();
+  
+  // Dynamic manifest for PWA
+  useDynamicManifest();
   
   const { 
     menuItems, addMenuItem, updateMenuItem, deleteMenuItem, toggleItemAvailability,

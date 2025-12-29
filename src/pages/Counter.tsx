@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
+import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { Order, OrderItem, Expense } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +69,9 @@ export default function Counter() {
   
   // Theme hook
   const { theme, setTheme } = useTheme();
+  
+  // Dynamic manifest for PWA
+  useDynamicManifest();
   
   // Audio notification hooks
   useOrderNotification();

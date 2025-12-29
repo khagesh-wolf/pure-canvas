@@ -37,31 +37,8 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
-      manifest: {
-        name: 'Chiya Dani - Digital Menu',
-        short_name: 'ChiyaDani',
-        description: 'Order your favorite tea and snacks digitally',
-        theme_color: '#06C167',
-        background_color: '#ffffff',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      },
+      // Disable static manifest - we use dynamic manifest per role
+      manifest: false,
       workbox: {
         // Cache strategies for maximum offline support
         runtimeCaching: [

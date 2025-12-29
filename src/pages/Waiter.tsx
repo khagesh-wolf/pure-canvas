@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
+import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { OrderItem, Order, MenuItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,11 @@ import { printKOTFromOrder, showKOTNotification } from '@/lib/kotPrinter';
 export default function Waiter() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const { 
+  
+  // Dynamic manifest for PWA
+  useDynamicManifest();
+  
+  const {
     menuItems, categories, orders, settings, staff,
     isAuthenticated, currentUser, logout, loginWithPin,
     addWaiterOrder, getOrdersByWaiter, updateOrderStatus

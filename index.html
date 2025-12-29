@@ -20,6 +20,27 @@
     <link rel="icon" type="image/png" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     
+    <!-- Default manifest (will be replaced dynamically on install pages) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    
+    <!-- Early PWA redirect script - runs before React to prevent flash -->
+    <script>
+      (function() {
+        // Check if running as PWA
+        var isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true;
+        if (!isPWA) return;
+        
+        var savedPage = localStorage.getItem('pwa_start_page');
+        var currentPath = window.location.pathname;
+        var isRootOrInstall = currentPath === '/' || currentPath.startsWith('/install');
+        
+        if (savedPage && isRootOrInstall && savedPage !== currentPath) {
+          window.location.replace(savedPage);
+        }
+      })();
+    </script>
+    
     <!-- Open Graph -->
     <meta property="og:title" content="Sajilo Orders" />
     <meta property="og:description" content="Order your favorite food and drinks digitally" />

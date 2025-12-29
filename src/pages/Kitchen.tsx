@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
+import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { Order, OrderItem, OrderItemStatus, OrderStatus } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,10 @@ const AGE_CRITICAL = 600; // 10 minutes - red
 
 export default function Kitchen() {
   const navigate = useNavigate();
+  
+  // Dynamic manifest for PWA
+  useDynamicManifest();
+  
   const { orders, updateOrderStatus, updateOrderItemStatus, isAuthenticated, currentUser, logout, settings, categories } = useStore();
   const [filter, setFilter] = useState<'all' | OrderStatus>('all');
   const [viewMode, setViewMode] = useState<'orders' | 'items' | 'lanes'>('orders');

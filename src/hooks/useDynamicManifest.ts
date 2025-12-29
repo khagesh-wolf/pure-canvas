@@ -11,8 +11,17 @@ interface ManifestConfig {
   background_color: string;
 }
 
+// Config for install pages AND actual role pages
 const ROLE_CONFIGS: Record<string, Omit<ManifestConfig, 'name' | 'short_name'> & { badgeColor: string; badgeText: string }> = {
   '/install/admin': {
+    description: 'Admin dashboard for menu management and reports',
+    start_url: '/admin',
+    theme_color: '#6366f1',
+    background_color: '#1e1b4b',
+    badgeColor: '#6366f1',
+    badgeText: 'A',
+  },
+  '/admin': {
     description: 'Admin dashboard for menu management and reports',
     start_url: '/admin',
     theme_color: '#6366f1',
@@ -28,7 +37,23 @@ const ROLE_CONFIGS: Record<string, Omit<ManifestConfig, 'name' | 'short_name'> &
     badgeColor: '#10b981',
     badgeText: 'C',
   },
+  '/counter': {
+    description: 'Point-of-sale counter terminal',
+    start_url: '/counter',
+    theme_color: '#10b981',
+    background_color: '#0f172a',
+    badgeColor: '#10b981',
+    badgeText: 'C',
+  },
   '/install/kitchen': {
+    description: 'Kitchen display for order management',
+    start_url: '/kitchen',
+    theme_color: '#f97316',
+    background_color: '#431407',
+    badgeColor: '#f97316',
+    badgeText: 'K',
+  },
+  '/kitchen': {
     description: 'Kitchen display for order management',
     start_url: '/kitchen',
     theme_color: '#f97316',
@@ -44,13 +69,25 @@ const ROLE_CONFIGS: Record<string, Omit<ManifestConfig, 'name' | 'short_name'> &
     badgeColor: '#8b5cf6',
     badgeText: 'W',
   },
+  '/waiter': {
+    description: 'Mobile waiter app for table orders',
+    start_url: '/waiter',
+    theme_color: '#8b5cf6',
+    background_color: '#2e1065',
+    badgeColor: '#8b5cf6',
+    badgeText: 'W',
+  },
 };
 
 const ROLE_LABELS: Record<string, string> = {
   '/install/admin': 'Admin',
+  '/admin': 'Admin',
   '/install/counter': 'Counter',
+  '/counter': 'Counter',
   '/install/kitchen': 'Kitchen',
+  '/kitchen': 'Kitchen',
   '/install/waiter': 'Waiter',
+  '/waiter': 'Waiter',
 };
 
 /**

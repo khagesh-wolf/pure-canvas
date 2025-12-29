@@ -1,0 +1,25 @@
+{
+  "name": "Sajilo Orders - Digital Menu",
+  "short_name": "Sajilo",
+  "description": "Order your favorite food and drinks digitally",
+  "theme_color": "#06C167",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
