@@ -7,6 +7,7 @@ import { DataProvider } from "@/components/DataProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { usePWARedirect } from "@/hooks/usePWAStartPage";
 import Hub from "./pages/Hub";
 import TableOrder from "./pages/TableOrder";
 import ScanTable from "./pages/ScanTable";
@@ -24,9 +25,10 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Component to handle document title updates
-const DocumentTitleUpdater = () => {
+// Component to handle document title updates and PWA redirect
+const AppInitializer = () => {
   useDocumentTitle();
+  usePWARedirect();
   return null;
 };
 
@@ -48,7 +50,7 @@ const App = () => (
           <Route path="/*" element={
             <SubscriptionGuard>
               <DataProvider>
-                <DocumentTitleUpdater />
+                <AppInitializer />
                 <Routes>
                   {/* Customer landing - scan table QR */}
                   <Route path="/" element={<ScanTable />} />

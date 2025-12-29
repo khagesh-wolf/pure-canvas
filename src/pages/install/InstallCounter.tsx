@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSettings } from "@/hooks/useSettings";
+import { useSavePWAStartPage } from "@/hooks/usePWAStartPage";
 import { Download, Monitor, CheckCircle2, Loader2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +18,9 @@ export default function InstallCounter() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  
+  // Save start page for PWA redirect
+  useSavePWAStartPage();
 
   useEffect(() => {
     if (isPWA()) {

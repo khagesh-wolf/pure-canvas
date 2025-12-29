@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSettings } from "@/hooks/useSettings";
+import { useSavePWAStartPage } from "@/hooks/usePWAStartPage";
 import { 
   Download, UserCircle, CheckCircle2, Loader2, ChevronRight,
   Share, Plus, MoreVertical, Smartphone
@@ -28,6 +29,9 @@ export default function InstallWaiter() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const platform = getPlatform();
+  
+  // Save start page for PWA redirect
+  useSavePWAStartPage();
 
   useEffect(() => {
     if (isPWA()) {
