@@ -33,12 +33,20 @@ export default function Kitchen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or not authorized
+  // Kitchen staff, admin, or counter staff with counterKitchenAccess enabled
+  const isAuthorizedForKitchen = currentUser?.role === 'kitchen' || 
+    currentUser?.role === 'admin' || 
+    (currentUser?.role === 'counter' && settings.counterKitchenAccess);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth');
+    } else if (!isAuthorizedForKitchen) {
+      toast.error('You do not have access to the Kitchen page');
+      navigate('/counter');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAuthorizedForKitchen, navigate]);
 
   // Sound notification for new orders
   const playNotificationSound = () => {
@@ -112,7 +120,7 @@ export default function Kitchen() {
     return () => document.removeEventListener('click', enableAudio);
   }, []);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !isAuthorizedForKitchen) {
     return null;
   }
 

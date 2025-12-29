@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT DEFAULT 'pending',
   total DECIMAL(10,2) NOT NULL DEFAULT 0,
   notes TEXT DEFAULT '',
+  -- Waiter order fields
+  created_by TEXT DEFAULT NULL,
+  is_waiter_order BOOLEAN DEFAULT false,
+  priority TEXT DEFAULT 'normal',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -126,6 +130,9 @@ CREATE TABLE IF NOT EXISTS settings (
   tiktok_url TEXT DEFAULT '',
   google_review_url TEXT DEFAULT '',
   counter_as_admin BOOLEAN DEFAULT false,
+  -- Counter settings
+  counter_kitchen_access BOOLEAN DEFAULT false,
+  counter_kot_enabled BOOLEAN DEFAULT false,
   kitchen_handles INTEGER DEFAULT 3,
   point_system_enabled BOOLEAN DEFAULT false,
   points_per_rupee DECIMAL DEFAULT 0.1,

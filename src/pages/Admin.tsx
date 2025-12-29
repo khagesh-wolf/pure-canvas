@@ -1660,9 +1660,59 @@ export default function Admin() {
                         </div>
                         <Switch
                           checked={settings.counterAsAdmin || false}
-                          onCheckedChange={(checked) => {
-                            updateSettings({ counterAsAdmin: checked });
-                            toast.success(checked ? 'Counter staff now have admin access' : 'Counter staff have standard access');
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateSettings({ counterAsAdmin: checked });
+                              toast.success(checked ? 'Counter staff now have admin access' : 'Counter staff have standard access');
+                            } catch (err) {
+                              toast.error('Failed to save setting');
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Counter Kitchen Access */}
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium">Kitchen Access for Counter</label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Counter staff can access Kitchen page with same login.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={settings.counterKitchenAccess || false}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateSettings({ counterKitchenAccess: checked });
+                              toast.success(checked ? 'Counter can now access Kitchen' : 'Kitchen access removed for Counter');
+                            } catch (err) {
+                              toast.error('Failed to save setting');
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Counter KOT Printing */}
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium">Counter KOT Printing</label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Print KOT when Counter accepts orders.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={settings.counterKotEnabled || false}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateSettings({ counterKotEnabled: checked });
+                              toast.success(checked ? 'Counter KOT printing enabled' : 'Counter KOT printing disabled');
+                            } catch (err) {
+                              toast.error('Failed to save setting');
+                            }
                           }}
                         />
                       </div>

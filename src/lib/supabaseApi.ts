@@ -52,6 +52,10 @@ const mapOrderFromDb = (row: any) => ({
   notes: row.notes ?? '',
   createdAt: row.created_at,
   updatedAt: row.updated_at ?? row.created_at,
+  // Waiter order fields
+  createdBy: row.created_by ?? undefined,
+  isWaiterOrder: row.is_waiter_order ?? false,
+  priority: row.priority ?? 'normal',
 });
 
 const mapOrderToDb = (order: any) => ({
@@ -64,6 +68,10 @@ const mapOrderToDb = (order: any) => ({
   notes: order.notes ?? '',
   created_at: order.createdAt,
   updated_at: order.updatedAt ?? order.createdAt,
+  // Waiter order fields
+  created_by: order.createdBy ?? null,
+  is_waiter_order: order.isWaiterOrder ?? false,
+  priority: order.priority ?? 'normal',
 });
 
 // Bills
@@ -175,6 +183,9 @@ const mapSettingsFromDb = (row: any) => {
     tiktokUrl: row.tiktok_url ?? '',
     googleReviewUrl: row.google_review_url ?? '',
     counterAsAdmin: row.counter_as_admin ?? false,
+    // Counter settings
+    counterKitchenAccess: row.counter_kitchen_access ?? false,
+    counterKotEnabled: row.counter_kot_enabled ?? false,
     kitchenHandles: row.kitchen_handles ?? 3,
     pointSystemEnabled: row.point_system_enabled ?? false,
     pointsPerRupee: Number(row.points_per_rupee ?? 0.1),
@@ -201,6 +212,9 @@ const mapSettingsToDb = (s: any) => {
   if (s.tiktokUrl !== undefined) db.tiktok_url = s.tiktokUrl;
   if (s.googleReviewUrl !== undefined) db.google_review_url = s.googleReviewUrl;
   if (s.counterAsAdmin !== undefined) db.counter_as_admin = s.counterAsAdmin;
+  // Counter settings
+  if (s.counterKitchenAccess !== undefined) db.counter_kitchen_access = s.counterKitchenAccess;
+  if (s.counterKotEnabled !== undefined) db.counter_kot_enabled = s.counterKotEnabled;
   if (s.kitchenHandles !== undefined) db.kitchen_handles = s.kitchenHandles;
   if (s.pointSystemEnabled !== undefined) db.point_system_enabled = s.pointSystemEnabled;
   if (s.pointsPerRupee !== undefined) db.points_per_rupee = s.pointsPerRupee;

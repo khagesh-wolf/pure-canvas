@@ -105,9 +105,12 @@ export interface Settings {
   googleReviewUrl?: string;
   // Admin-less mode: counter gets full admin access
   counterAsAdmin?: boolean;
+  // Counter settings
+  counterKitchenAccess?: boolean; // If enabled, counter staff can access Kitchen page
+  counterKotEnabled?: boolean; // If enabled, counter can print KOT when accepting orders
   // Kitchen settings
   kitchenHandles?: number; // Number of parallel orders kitchen can handle (default: 3)
-  kotPrintingEnabled?: boolean; // Kitchen Order Ticket printing
+  kotPrintingEnabled?: boolean; // Kitchen Order Ticket printing (for waiter orders)
   kdsEnabled?: boolean; // Kitchen Display System - if On, both Kitchen and Counter can accept orders
   kitchenFullscreenMode?: boolean; // Fullscreen mode with larger fonts for wall-mounted displays
   // Point system settings

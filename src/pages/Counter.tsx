@@ -430,8 +430,8 @@ export default function Counter() {
     
     toast.success(`${accepted} order${accepted > 1 ? 's' : ''} accepted`);
     
-    // Only print KOT if kotPrintingEnabled is true
-    if (settings.kotPrintingEnabled) {
+    // Only print KOT if counterKotEnabled is true (counter-specific setting)
+    if (settings.counterKotEnabled) {
       printKOTGroup(group);
     }
   };
@@ -718,7 +718,7 @@ export default function Counter() {
                     className="flex-1 h-8 text-xs bg-success hover:bg-success/90 text-success-foreground"
                     onClick={() => handleAcceptGroup(group)}
                   >
-                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}
+                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}{settings.counterKotEnabled ? ' & Print' : ''}
                   </Button>
                   <Button 
                     size="sm" 
@@ -803,7 +803,7 @@ export default function Counter() {
                     className="flex-1 h-8 text-xs bg-success hover:bg-success/90 text-success-foreground"
                     onClick={() => handleAcceptGroup(group)}
                   >
-                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}
+                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}{settings.counterKotEnabled ? ' & Print' : ''}
                   </Button>
                   <Button 
                     size="sm" 
@@ -939,7 +939,7 @@ export default function Counter() {
                     className="flex-1 bg-success hover:bg-success/90 text-success-foreground shadow-lg"
                     onClick={() => handleAcceptGroup(group)}
                   >
-                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''} & Print
+                    <Check className="w-3 h-3 mr-1" /> Accept{group.orders.length > 1 ? ' All' : ''}{settings.counterKotEnabled ? ' & Print' : ''}
                   </Button>
                   <Button 
                     size="sm" 

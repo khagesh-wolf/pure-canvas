@@ -23,7 +23,7 @@ export default function Waiter() {
   const { 
     menuItems, categories, orders, settings, staff,
     isAuthenticated, currentUser, logout, loginWithPin,
-    addWaiterOrder, getOrdersByWaiter
+    addWaiterOrder, getOrdersByWaiter, updateOrderStatus
   } = useStore();
 
   // PIN Login state
@@ -64,14 +64,25 @@ export default function Waiter() {
     }
   }, [isAuthenticated, currentUser, navigate]);
 
-  // Get waiter's orders (for status tracking) - filter by createdBy (waiter's ID)
+  // Get orders for waiter to serve - all accepted/preparing/ready orders (not just waiter's own)
+  // Sorted by: ready first (when KDS enabled), then oldest first
   const waiterOrders = useMemo(() => {
     if (!currentUser) return [];
-    return orders.filter(o => 
-      o.createdBy === currentUser.id &&
+    const activeOrders = orders.filter(o => 
       ['accepted', 'preparing', 'ready'].includes(o.status)
-    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [currentUser, orders]);
+    );
+    
+    // Sort: if KDS enabled, ready orders first; then by oldest first
+    return activeOrders.sort((a, b) => {
+      if (settings.kdsEnabled) {
+        // Ready orders first
+        if (a.status === 'ready' && b.status !== 'ready') return -1;
+        if (b.status === 'ready' && a.status !== 'ready') return 1;
+      }
+      // Then oldest first
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+  }, [currentUser, orders, settings.kdsEnabled]);
 
   // Count ready orders for notification
   const readyOrdersCount = waiterOrders.filter(o => o.status === 'ready').length;
@@ -641,6 +652,9 @@ export default function Waiter() {
       {/* My Orders */}
       {step === 'orders' && (
         <div className="flex-1 overflow-y-auto p-4">
+          <div className="mb-4 text-sm text-muted-foreground">
+            {settings.kdsEnabled ? 'Ready orders shown first' : 'Oldest orders first'}
+          </div>
           {waiterOrders.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -648,57 +662,81 @@ export default function Waiter() {
             </div>
           ) : (
             <div className="space-y-4">
-              {waiterOrders.map(order => (
-                <div 
-                  key={order.id} 
-                  className={`bg-card border rounded-xl overflow-hidden ${
-                    order.status === 'ready' ? 'border-success ring-2 ring-success/20' : 'border-border'
-                  }`}
-                >
-                  <div className={`p-4 flex items-center justify-between ${
-                    order.status === 'ready' ? 'bg-success/15' : ''
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        order.status === 'ready' ? 'bg-success/20' : 'bg-muted'
-                      }`}>
-                        {order.status === 'ready' ? (
-                          <CheckCircle className="w-5 h-5 text-success" />
-                        ) : (
-                          <ChefHat className="w-5 h-5 text-muted-foreground" />
-                        )}
+              {waiterOrders.map(order => {
+                const isWaiterOwned = order.createdBy === currentUser?.id;
+                return (
+                  <div 
+                    key={order.id} 
+                    className={`bg-card border rounded-xl overflow-hidden ${
+                      order.status === 'ready' ? 'border-success ring-2 ring-success/20' : 'border-border'
+                    }`}
+                  >
+                    <div className={`p-4 flex items-center justify-between ${
+                      order.status === 'ready' ? 'bg-success/15' : ''
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          order.status === 'ready' ? 'bg-success/20' : 'bg-muted'
+                        }`}>
+                          {order.status === 'ready' ? (
+                            <CheckCircle className="w-5 h-5 text-success" />
+                          ) : (
+                            <ChefHat className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg">Table {order.tableNumber}</span>
+                            {isWaiterOwned && (
+                              <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full">My Order</span>
+                            )}
+                            {order.isWaiterOrder && !isWaiterOwned && (
+                              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Waiter</span>
+                            )}
+                            {!order.isWaiterOrder && (
+                              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Customer</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{formatNepalTime(order.createdAt)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-lg">Table {order.tableNumber}</span>
-                        <p className="text-xs text-muted-foreground">{formatNepalTime(order.createdAt)}</p>
-                      </div>
+                      <StatusBadge status={order.status} />
                     </div>
-                    <StatusBadge status={order.status} />
-                  </div>
-                  
-                  <div className="p-4 pt-0 space-y-1">
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span>
-                          <span className="font-bold text-primary">{item.qty}×</span> {item.name}
-                        </span>
-                        {item.status === 'ready' && (
-                          <span className="text-success text-xs">Ready</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                    
+                    <div className="p-4 pt-0 space-y-1">
+                      {order.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span>
+                            <span className="font-bold text-primary">{item.qty}×</span> {item.name}
+                          </span>
+                          {item.status === 'ready' && (
+                            <span className="text-success text-xs">Ready</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
 
-                  {order.status === 'ready' && (
-                    <div className="p-4 pt-0">
-                      <div className="bg-success/15 text-success rounded-lg p-3 text-center font-medium animate-pulse">
-                        <Bell className="w-4 h-4 inline mr-2" />
-                        Ready to Serve!
+                    {order.status === 'ready' && (
+                      <div className="p-4 pt-0 space-y-2">
+                        <div className="bg-success/15 text-success rounded-lg p-3 text-center font-medium animate-pulse">
+                          <Bell className="w-4 h-4 inline mr-2" />
+                          Ready to Serve!
+                        </div>
+                        <Button 
+                          className="w-full bg-success hover:bg-success/90 text-success-foreground font-bold"
+                          onClick={() => {
+                            updateOrderStatus(order.id, 'served');
+                            toast.success(`Table ${order.tableNumber} order marked as served!`);
+                          }}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Mark as Served
+                        </Button>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
