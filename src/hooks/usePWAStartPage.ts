@@ -36,18 +36,31 @@ export const useSavePWAStartPage = () => {
 
 /**
  * Hook to redirect to the saved start page when opening the PWA
+ * This must be used at the root level, before any nested routes
  */
 export const usePWARedirect = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
   useEffect(() => {
-    // Only redirect if we're in PWA mode and on the root path
-    if (isPWA() && location.pathname === '/') {
-      const savedStartPage = localStorage.getItem(PWA_START_PAGE_KEY);
-      if (savedStartPage && savedStartPage !== '/') {
-        navigate(savedStartPage, { replace: true });
-      }
+    // Only redirect if we're in PWA mode
+    if (!isPWA()) return;
+    
+    const savedStartPage = localStorage.getItem(PWA_START_PAGE_KEY);
+    
+    // Redirect from root or install pages to the saved start page
+    const isRootOrInstall = location.pathname === '/' || location.pathname.startsWith('/install');
+    
+    if (savedStartPage && isRootOrInstall && savedStartPage !== location.pathname) {
+      navigate(savedStartPage, { replace: true });
     }
   }, [navigate, location.pathname]);
+};
+
+/**
+ * Get the saved PWA start page (for use outside of React components)
+ */
+export const getSavedPWAStartPage = (): string | null => {
+  if (!isPWA()) return null;
+  return localStorage.getItem(PWA_START_PAGE_KEY);
 };

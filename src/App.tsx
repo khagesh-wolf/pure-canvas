@@ -26,9 +26,14 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Component to handle document title updates and PWA redirect
-const AppInitializer = () => {
+// Component to handle document title updates
+const DocumentTitleHandler = () => {
   useDocumentTitle();
+  return null;
+};
+
+// Component to handle PWA redirect at the root level
+const PWARedirectHandler = () => {
   usePWARedirect();
   return null;
 };
@@ -39,6 +44,8 @@ const App = () => (
       <Toaster />
       <Sonner position="top-right" />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        {/* PWA redirect handler at root level - runs before route matching */}
+        <PWARedirectHandler />
         <Routes>
           {/* Install pages - outside DataProvider for fast loading */}
           <Route path="/install" element={<Install />} />
@@ -52,7 +59,7 @@ const App = () => (
             <SubscriptionGuard>
               <DataProvider>
                 <PWASplashScreen>
-                  <AppInitializer />
+                  <DocumentTitleHandler />
                   <Routes>
                     {/* Customer landing - scan table QR */}
                     <Route path="/" element={<ScanTable />} />
