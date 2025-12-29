@@ -4,10 +4,11 @@ import { useStore } from '@/store/useStore';
 import { Order, OrderItem, OrderItemStatus, OrderStatus } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Clock, ChefHat, Bell, CheckCircle, LogOut, Coffee, RefreshCw, MonitorDot, AlertTriangle, Flame, Timer, Volume2, VolumeX, LayoutGrid, List, Play, Pause } from 'lucide-react';
+import { Check, X, Clock, ChefHat, Bell, CheckCircle, LogOut, Coffee, RefreshCw, MonitorDot, AlertTriangle, Flame, Timer, Volume2, VolumeX, LayoutGrid, List, Play, Pause, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalTime, formatNepalDateTime } from '@/lib/nepalTime';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { printKOTFromOrder, showKOTNotification } from '@/lib/kotPrinter';
 
 const statusFlow: OrderStatus[] = ['pending', 'accepted', 'preparing', 'ready'];
 
@@ -115,9 +116,15 @@ export default function Kitchen() {
     return null;
   }
 
-  const activeOrders = orders.filter(o => 
-    ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)
-  );
+  // When KDS is disabled, kitchen only sees accepted/preparing orders (no pending)
+  // When KDS is enabled, kitchen can also see and accept pending orders
+  const activeOrders = orders.filter(o => {
+    if (settings.kdsEnabled) {
+      return ['pending', 'accepted', 'preparing', 'ready'].includes(o.status);
+    }
+    // KDS disabled - kitchen only sees orders they need to prepare
+    return ['accepted', 'preparing', 'ready'].includes(o.status);
+  });
 
   const kitchenOrders = orders.filter(o => 
     ['accepted', 'preparing'].includes(o.status)
@@ -132,9 +139,24 @@ export default function Kitchen() {
   const preparingCount = orders.filter(o => o.status === 'preparing').length;
   const readyCount = orders.filter(o => o.status === 'ready').length;
 
-  const handleStatusChange = (order: Order, newStatus: OrderStatus) => {
+  const handleStatusChange = async (order: Order, newStatus: OrderStatus) => {
     updateOrderStatus(order.id, newStatus);
     toast.success(`Order marked as ${newStatus}`);
+    
+    // Auto-print KOT when kitchen accepts an order (if KOT is enabled)
+    if (newStatus === 'accepted' && settings.kotPrintingEnabled) {
+      try {
+        const printed = await printKOTFromOrder(order, settings.restaurantName);
+        if (printed) {
+          toast.success('KOT printed');
+        } else {
+          showKOTNotification(order);
+        }
+      } catch (error) {
+        console.log('KOT print failed:', error);
+        showKOTNotification(order);
+      }
+    }
   };
 
   const handleItemStatusChange = (orderId: string, itemId: string, status: OrderItemStatus, completedQty?: number) => {

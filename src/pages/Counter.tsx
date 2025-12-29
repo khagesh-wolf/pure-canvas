@@ -140,14 +140,12 @@ export default function Counter() {
     );
   }
 
-  // Timer refresh for KDS order age display
+  // Timer refresh for order age display (always active)
   const [, forceUpdate] = useState({});
   useEffect(() => {
-    if (settings.kdsEnabled) {
-      const interval = setInterval(() => forceUpdate({}), 10000);
-      return () => clearInterval(interval);
-    }
-  }, [settings.kdsEnabled]);
+    const interval = setInterval(() => forceUpdate({}), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -431,7 +429,11 @@ export default function Counter() {
     }
     
     toast.success(`${accepted} order${accepted > 1 ? 's' : ''} accepted`);
-    printKOTGroup(group);
+    
+    // Only print KOT if kotPrintingEnabled is true
+    if (settings.kotPrintingEnabled) {
+      printKOTGroup(group);
+    }
   };
 
   const handleRejectGroup = (group: PendingOrderGroup) => {
@@ -1084,13 +1086,11 @@ export default function Counter() {
                       <span className="text-muted-foreground">Table {group.tableNumber}</span>
                     </div>
                     
-                    {/* Timer card when KDS is enabled */}
-                    {settings.kdsEnabled && (
-                      <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold mb-3 w-fit ${getAgeColor(orderAge)}`}>
-                        <Timer className="w-3.5 h-3.5" />
-                        {formatTimer(orderAge)}
-                      </div>
-                    )}
+                    {/* Timer card - always active */}
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold mb-3 w-fit ${getAgeColor(orderAge)}`}>
+                      <Timer className="w-3.5 h-3.5" />
+                      {formatTimer(orderAge)}
+                    </div>
                     
                     <div className="mb-3 space-y-1">
                       {group.items.map((item, idx) => (
