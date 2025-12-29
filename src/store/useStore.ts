@@ -38,6 +38,7 @@ const syncToBackend = async (fn: () => Promise<unknown>, retries = 2) => {
 
 const defaultSettings: Settings = {
   restaurantName: 'Sajilo Orders',
+  restaurantSubName: '',
   tableCount: 10,
   wifiSSID: '',
   wifiPassword: '',

@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS staff (
 CREATE TABLE IF NOT EXISTS settings (
   id SERIAL PRIMARY KEY,
   restaurant_name TEXT DEFAULT 'Chiyadani',
+  restaurant_sub_name TEXT DEFAULT '',
   table_count INTEGER DEFAULT 10,
   wifi_ssid TEXT DEFAULT '',
   wifi_password TEXT DEFAULT '',

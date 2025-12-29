@@ -173,6 +173,7 @@ const mapSettingsFromDb = (row: any) => {
   if (!row) return {};
   return {
     restaurantName: row.restaurant_name ?? 'Chiyadani',
+    restaurantSubName: row.restaurant_sub_name ?? '',
     tableCount: row.table_count ?? 10,
     wifiSSID: row.wifi_ssid ?? '',
     wifiPassword: row.wifi_password ?? '',
@@ -202,6 +203,7 @@ const mapSettingsFromDb = (row: any) => {
 const mapSettingsToDb = (s: any) => {
   const db: Record<string, any> = {};
   if (s.restaurantName !== undefined) db.restaurant_name = s.restaurantName;
+  if (s.restaurantSubName !== undefined) db.restaurant_sub_name = s.restaurantSubName;
   if (s.tableCount !== undefined) db.table_count = s.tableCount;
   if (s.wifiSSID !== undefined) db.wifi_ssid = s.wifiSSID;
   if (s.wifiPassword !== undefined) db.wifi_password = s.wifiPassword;
