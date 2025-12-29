@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DataProvider } from "@/components/DataProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
+import { PWASplashScreen } from "@/components/PWASplashScreen";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { usePWARedirect } from "@/hooks/usePWAStartPage";
 import Hub from "./pages/Hub";
@@ -50,25 +51,27 @@ const App = () => (
           <Route path="/*" element={
             <SubscriptionGuard>
               <DataProvider>
-                <AppInitializer />
-                <Routes>
-                  {/* Customer landing - scan table QR */}
-                  <Route path="/" element={<ScanTable />} />
-                  
-                  {/* Staff hub - requires knowing the URL */}
-                  <Route path="/hub" element={<Hub />} />
-                  <Route path="/table/:tableNumber" element={<TableOrder />} />
-                  
-                  {/* Staff routes */}
-                  <Route path="/counter" element={<Counter />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/kitchen" element={<Kitchen />} />
-                  <Route path="/waiter" element={<Waiter />} />
-                  <Route path="/auth" element={<Auth />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <OfflineIndicator />
+                <PWASplashScreen>
+                  <AppInitializer />
+                  <Routes>
+                    {/* Customer landing - scan table QR */}
+                    <Route path="/" element={<ScanTable />} />
+                    
+                    {/* Staff hub - requires knowing the URL */}
+                    <Route path="/hub" element={<Hub />} />
+                    <Route path="/table/:tableNumber" element={<TableOrder />} />
+                    
+                    {/* Staff routes */}
+                    <Route path="/counter" element={<Counter />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="/kitchen" element={<Kitchen />} />
+                    <Route path="/waiter" element={<Waiter />} />
+                    <Route path="/auth" element={<Auth />} />
+                    
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <OfflineIndicator />
+                </PWASplashScreen>
               </DataProvider>
             </SubscriptionGuard>
           } />
