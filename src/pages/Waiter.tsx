@@ -237,21 +237,31 @@ export default function Waiter() {
     if (!selectedTable || cart.length === 0) return;
     
     const newOrder = addWaiterOrder(selectedTable, cart, orderNotes);
-    toast.success(`Order sent to kitchen for Table ${selectedTable}!`);
     
-    // Auto-print KOT if enabled
-    if (settings.kotPrintingEnabled) {
-      try {
-        const printed = await printKOTFromOrder(newOrder, settings.restaurantName, currentUser?.name);
-        if (printed) {
-          toast.success('KOT printed!');
-        } else {
+    // Show appropriate message based on order flow
+    // If KDS is ON AND Kitchen KOT printing is ON: order goes directly to kitchen
+    // Otherwise: order goes to counter for acceptance
+    const goesToKitchen = settings.kdsEnabled && settings.kotPrintingEnabled;
+    
+    if (goesToKitchen) {
+      toast.success(`Order sent to kitchen for Table ${selectedTable}!`);
+      
+      // Auto-print KOT if enabled
+      if (settings.kotPrintingEnabled) {
+        try {
+          const printed = await printKOTFromOrder(newOrder, settings.restaurantName, currentUser?.name);
+          if (printed) {
+            toast.success('KOT printed!');
+          } else {
+            showKOTNotification(newOrder);
+          }
+        } catch (error) {
+          console.log('KOT print failed:', error);
           showKOTNotification(newOrder);
         }
-      } catch (error) {
-        console.log('KOT print failed:', error);
-        showKOTNotification(newOrder);
       }
+    } else {
+      toast.success(`Order sent to counter for Table ${selectedTable}!`);
     }
     
     // Reset state

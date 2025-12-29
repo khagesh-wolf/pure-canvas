@@ -336,7 +336,15 @@ export const useStore = create<StoreState>()((set, get) => ({
   addWaiterOrder: (tableNumber, items, notes) => {
     const now = getNepalTimestamp();
     const currentUser = get().currentUser;
+    const settings = get().settings;
     const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+    
+    // Determine order status based on KDS and Kitchen KOT settings
+    // If KDS is ON AND Kitchen KOT printing is ON: auto-accept (Kitchen handles it)
+    // Otherwise: set to pending (Counter needs to accept and print)
+    const shouldAutoAccept = settings.kdsEnabled && settings.kotPrintingEnabled;
+    const orderStatus: OrderStatus = shouldAutoAccept ? 'accepted' : 'pending';
+    
     // Ensure all order items have required fields with pending status
     const orderItems = items.map(item => ({
       id: item.id || generateId(),
@@ -352,7 +360,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       tableNumber,
       customerPhone: `waiter-${currentUser?.name || 'staff'}`,
       items: orderItems,
-      status: 'accepted', // Auto-accepted for waiter orders
+      status: orderStatus,
       createdAt: now,
       updatedAt: now,
       total,
