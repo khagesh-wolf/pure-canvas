@@ -1542,7 +1542,8 @@ export default function TableOrder() {
         </div>
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - hidden when portion selector is open */}
+      {!portionSelectorItem && (
       <div className="fixed bottom-28 right-4 z-[1500] flex flex-col-reverse items-end gap-2">
         {/* FAB Menu Items */}
         {fabOpen && (
@@ -1602,9 +1603,10 @@ export default function TableOrder() {
           {fabOpen ? <Plus className="w-6 h-6" /> : <UtensilsCrossed className="w-6 h-6" />}
         </button>
       </div>
+      )}
 
       {/* FAB Overlay */}
-      {fabOpen && (
+      {fabOpen && !portionSelectorItem && (
         <div 
           className="fixed inset-0 bg-black/20 z-[1400]"
           onClick={() => setFabOpen(false)}
