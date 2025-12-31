@@ -15,25 +15,29 @@ interface PortionPriceEditorProps {
 }
 
 export function PortionPriceEditor({ menuItem, open, onClose }: PortionPriceEditorProps) {
-  const { updatePortionOption, getPortionsByItem, getInventoryByMenuItemId } = useStore();
+  const { updatePortionOption, getPortionsByItem, getInventoryByMenuItemId, portionOptions, inventoryItems } = useStore();
   
   // Get the inventory item for unit display
   const invItem = getInventoryByMenuItemId(menuItem.id);
-  const portions = getPortionsByItem(menuItem.id);
+  
+  // Get portions - use memoized result to avoid stale data
+  const portions = invItem 
+    ? portionOptions.filter(p => p.inventoryItemId === invItem.id)
+    : [];
   
   // Local state for editing prices
   const [prices, setPrices] = useState<Record<string, string>>({});
 
-  // Initialize prices from store when opening
+  // Initialize prices from portions when opening or portions change
   useEffect(() => {
-    if (open) {
+    if (open && portions.length > 0) {
       const initial: Record<string, string> = {};
       portions.forEach(p => {
         initial[p.id] = p.fixedPrice?.toString() || '';
       });
       setPrices(initial);
     }
-  }, [open, menuItem.id, portions]);
+  }, [open, portions.length]);
 
   const handleSave = () => {
     let hasChanges = false;
@@ -73,34 +77,43 @@ export function PortionPriceEditor({ menuItem, open, onClose }: PortionPriceEdit
             Set the price for each portion size. Only portions with prices will be shown to customers.
           </p>
           
-          {portions
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map(portion => {
-              const hasPrice = prices[portion.id] !== '';
-              return (
-                <div key={portion.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="flex-1">
-                    <div className="font-medium">{portion.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {portion.size} {invItem.unit}
+          {portions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No portion options available.</p>
+              <p className="text-sm mt-2">Add portions first using the "Portions" button.</p>
+            </div>
+          ) : (
+            portions
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map(portion => {
+                const hasPrice = prices[portion.id] !== '' && prices[portion.id] !== undefined;
+                return (
+                  <div key={portion.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="flex-1">
+                      <div className="font-medium">{portion.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {portion.size} {invItem?.unit || 'pcs'}
+                      </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Rs</span>
+                      <Input
+                        type="number"
+                        value={prices[portion.id] || ''}
+                        onChange={(e) => handlePriceChange(portion.id, e.target.value)}
+                        placeholder="Price"
+                        className="w-24"
+                        min="0"
+                        step="10"
+                      />
+                    </div>
+                    {hasPrice && (
+                      <Badge variant="secondary" className="text-xs">Set</Badge>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Rs</span>
-                    <Input
-                      type="number"
-                      value={prices[portion.id]}
-                      onChange={(e) => handlePriceChange(portion.id, e.target.value)}
-                      placeholder="Price"
-                      className="w-24"
-                    />
-                  </div>
-                  {hasPrice && (
-                    <Badge variant="secondary" className="text-xs">Set</Badge>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })
+          )}
         </div>
         
         <DialogFooter>
