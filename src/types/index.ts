@@ -159,14 +159,6 @@ export interface WaiterCall {
 
 export type InventoryUnitType = 'ml' | 'pcs' | 'grams' | 'bottle' | 'pack';
 
-export interface InventoryCategory {
-  id: string;
-  categoryId: string;
-  unitType: InventoryUnitType;
-  lowStockThreshold: number;
-  createdAt: string;
-}
-
 export interface InventoryItem {
   id: string;
   menuItemId: string;
@@ -194,11 +186,11 @@ export interface InventoryTransaction {
 
 export interface PortionOption {
   id: string;
-  inventoryCategoryId: string;
+  inventoryItemId: string; // Now links to inventory item directly, not category
   name: string;
   size: number;
   priceMultiplier: number;
-  fixedPrice?: number; // Default fixed price for this portion (fallback if no item-specific price)
+  fixedPrice?: number; // Fixed price for this portion
   sortOrder: number;
   createdAt: string;
 }

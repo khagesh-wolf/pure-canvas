@@ -7,10 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Package, AlertTriangle, TrendingDown, Settings2, Trash2, DollarSign, Pencil } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Settings2, Trash2, DollarSign, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
-import { InventoryUnitType } from '@/types';
-import { CategoryPriceEditor } from './PortionPriceEditor';
+import { InventoryUnitType, MenuItem } from '@/types';
+import { PortionPriceEditor } from './PortionPriceEditor';
 
 const UNIT_OPTIONS: { value: InventoryUnitType; label: string }[] = [
   { value: 'ml', label: 'Milliliters (ml)' },
@@ -40,22 +40,24 @@ const DEFAULT_BOTTLE_SIZES = [180, 375, 750, 1000];
 
 export function InventoryManager() {
   const { 
-    categories, menuItems, inventoryCategories, inventoryItems, portionOptions, lowStockItems,
-    addInventoryCategory, deleteInventoryCategory, addInventoryItem, updateInventoryItem,
-    deleteInventoryItem, addStock, addPortionOption, deletePortionOption, getInventoryByMenuItemId
+    menuItems, inventoryItems, portionOptions, lowStockItems,
+    addInventoryItem, updateInventoryItem, deleteInventoryItem,
+    addStock, addPortionOption, deletePortionOption, getInventoryByMenuItemId,
+    getPortionsByItem
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('stock');
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedMenuItem, setSelectedMenuItem] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<InventoryUnitType>('pcs');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
+  const [defaultBottleSize, setDefaultBottleSize] = useState('750');
   
   const [stockMenuItemId, setStockMenuItemId] = useState('');
   const [stockQuantity, setStockQuantity] = useState('');
   const [stockNotes, setStockNotes] = useState('');
-  const [priceEditorCategoryId, setPriceEditorCategoryId] = useState<string | null>(null);
+  const [priceEditorItem, setPriceEditorItem] = useState<MenuItem | null>(null);
   
   // Bottle-based stock entry
   const [bottleCount, setBottleCount] = useState('');
@@ -66,61 +68,58 @@ export function InventoryManager() {
   const [editBottleSizeItemId, setEditBottleSizeItemId] = useState<string | null>(null);
   const [editBottleSizeValue, setEditBottleSizeValue] = useState('');
 
-  // Categories with inventory tracking
-  const trackedCategories = categories.filter(c => 
-    inventoryCategories.some(ic => ic.categoryId === c.id)
-  );
-
-  // Menu items with inventory
+  // Menu items with inventory tracking
   const inventoryMenuItems = menuItems.filter(m => 
     inventoryItems.some(ii => ii.menuItemId === m.id)
   );
 
-  const handleAddInventoryCategory = () => {
-    if (!selectedCategory) {
-      toast.error('Select a category');
+  // Menu items not yet tracked
+  const unTrackedMenuItems = menuItems.filter(m => 
+    !inventoryItems.some(ii => ii.menuItemId === m.id)
+  );
+
+  const handleAddInventoryItem = () => {
+    if (!selectedMenuItem) {
+      toast.error('Select a menu item');
       return;
     }
 
-    const cat = categories.find(c => c.id === selectedCategory);
-    if (!cat) return;
+    const item = menuItems.find(m => m.id === selectedMenuItem);
+    if (!item) return;
 
-    addInventoryCategory({
-      categoryId: selectedCategory,
-      unitType: selectedUnit,
+    // Create the inventory item
+    addInventoryItem({
+      menuItemId: selectedMenuItem,
+      currentStock: 0,
+      defaultBottleSize: selectedUnit === 'ml' ? parseInt(defaultBottleSize) : undefined,
+      unit: selectedUnit,
       lowStockThreshold: parseFloat(lowStockThreshold),
     });
 
-    // Add default portions for this category
-    const newInvCat = useStore.getState().inventoryCategories.find(ic => ic.categoryId === selectedCategory);
-    if (newInvCat) {
-      const defaultPortions = DEFAULT_PORTIONS[selectedUnit] || DEFAULT_PORTIONS.pcs;
-      defaultPortions.forEach((p, i) => {
-        addPortionOption({
-          inventoryCategoryId: newInvCat.id,
-          name: p.name,
-          size: p.size,
-          priceMultiplier: p.multiplier,
-          sortOrder: i,
+    // Get the newly created inventory item
+    setTimeout(() => {
+      const newInvItem = useStore.getState().inventoryItems.find(ii => ii.menuItemId === selectedMenuItem);
+      if (newInvItem) {
+        // Add default portions for this item
+        const defaultPortions = DEFAULT_PORTIONS[selectedUnit] || DEFAULT_PORTIONS.pcs;
+        defaultPortions.forEach((p, i) => {
+          addPortionOption({
+            inventoryItemId: newInvItem.id,
+            name: p.name,
+            size: p.size,
+            priceMultiplier: p.multiplier,
+            sortOrder: i,
+          });
         });
-      });
-    }
+      }
+    }, 100);
 
-    // Create inventory items for all menu items in this category
-    const itemsInCategory = menuItems.filter(m => m.category === cat.name);
-    itemsInCategory.forEach(item => {
-      addInventoryItem({
-        menuItemId: item.id,
-        currentStock: 0,
-        defaultBottleSize: selectedUnit === 'ml' ? 750 : undefined,
-        unit: selectedUnit,
-        lowStockThreshold: parseFloat(lowStockThreshold),
-      });
-    });
-
-    toast.success(`${cat.name} added to inventory tracking`);
-    setShowAddCategoryModal(false);
-    setSelectedCategory('');
+    toast.success(`${item.name} added to inventory tracking`);
+    setShowAddItemModal(false);
+    setSelectedMenuItem('');
+    setSelectedUnit('pcs');
+    setLowStockThreshold('5');
+    setDefaultBottleSize('750');
   };
 
   const handleAddStock = () => {
@@ -162,35 +161,20 @@ export function InventoryManager() {
     setStockNotes('');
   };
 
-  const handleRemoveCategory = (catId: string) => {
-    if (!confirm('Remove this category from inventory tracking? All stock data will be lost.')) return;
+  const handleRemoveItem = (menuItemId: string) => {
+    if (!confirm('Remove this item from inventory tracking? All stock data will be lost.')) return;
     
-    const invCat = inventoryCategories.find(ic => ic.categoryId === catId);
-    if (invCat) {
-      // Delete portion options
-      portionOptions.filter(p => p.inventoryCategoryId === invCat.id).forEach(p => {
+    const invItem = inventoryItems.find(ii => ii.menuItemId === menuItemId);
+    if (invItem) {
+      // Delete portion options for this item
+      portionOptions.filter(p => p.inventoryItemId === invItem.id).forEach(p => {
         deletePortionOption(p.id);
       });
       
-      // Delete inventory items
-      const cat = categories.find(c => c.id === catId);
-      if (cat) {
-        const itemsInCat = menuItems.filter(m => m.category === cat.name);
-        itemsInCat.forEach(item => {
-          const invItem = inventoryItems.find(ii => ii.menuItemId === item.id);
-          if (invItem) deleteInventoryItem(invItem.id);
-        });
-      }
-      
-      deleteInventoryCategory(invCat.id);
+      deleteInventoryItem(invItem.id);
     }
-    toast.success('Category removed from inventory');
+    toast.success('Item removed from inventory');
   };
-
-  // Categories not yet tracked
-  const unTrackedCategories = categories.filter(c => 
-    !inventoryCategories.some(ic => ic.categoryId === c.id)
-  );
 
   return (
     <div className="space-y-6">
@@ -236,7 +220,7 @@ export function InventoryManager() {
               <CardContent className="py-8 text-center text-muted-foreground">
                 <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No items tracked in inventory yet.</p>
-                <p className="text-sm">Go to Settings tab to add categories.</p>
+                <p className="text-sm">Go to Settings tab to add items.</p>
               </CardContent>
             </Card>
           ) : (
@@ -285,93 +269,121 @@ export function InventoryManager() {
         <TabsContent value="items" className="space-y-4">
           <h3 className="text-lg font-semibold">Current Inventory</h3>
           
-          {trackedCategories.map(cat => {
-            const invCat = inventoryCategories.find(ic => ic.categoryId === cat.id);
-            const itemsInCat = menuItems.filter(m => m.category === cat.name);
-            
-            return (
-              <Card key={cat.id}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center justify-between">
-                    <span>{cat.name}</span>
-                    <Badge variant="outline">{invCat?.unitType}</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {itemsInCat.map(item => {
-                      const invItem = inventoryItems.find(ii => ii.menuItemId === item.id);
-                      if (!invItem) return null;
-                      
-                      return (
-                        <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                          <div>
-                            <span>{item.name}</span>
-                            {invItem.unit === 'ml' && invItem.defaultBottleSize && (
-                              <span className="text-xs text-muted-foreground ml-2">
-                                (Default: {invItem.defaultBottleSize}ml)
-                              </span>
-                            )}
-                          </div>
+          {inventoryMenuItems.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No items in inventory yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {inventoryMenuItems.map(item => {
+                const invItem = inventoryItems.find(ii => ii.menuItemId === item.id);
+                if (!invItem) return null;
+                const portions = getPortionsByItem(item.id);
+                const isLow = invItem.currentStock <= (invItem.lowStockThreshold || 5);
+                
+                return (
+                  <Card key={item.id} className={isLow ? 'border-warning' : ''}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`font-mono ${invItem.currentStock <= (invItem.lowStockThreshold || 5) ? 'text-warning' : ''}`}>
-                              {invItem.currentStock} {invItem.unit}
-                            </span>
+                            <h4 className="font-medium">{item.name}</h4>
+                            <Badge variant="outline">{invItem.unit}</Badge>
+                            {isLow && <AlertTriangle className="w-4 h-4 text-warning" />}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{item.category}</p>
+                          {invItem.unit === 'ml' && invItem.defaultBottleSize && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Default bottle: {invItem.defaultBottleSize}ml
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {portions.map(p => (
+                              <Badge key={p.id} variant="secondary" className="text-xs">
+                                {p.name} {p.fixedPrice ? `- Rs ${p.fixedPrice}` : ''}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`text-xl font-bold ${isLow ? 'text-warning' : ''}`}>
+                            {invItem.currentStock} {invItem.unit}
+                          </span>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setPriceEditorItem(item)}
+                            >
+                              <DollarSign className="w-4 h-4 mr-1" /> Prices
+                            </Button>
                             {invItem.unit === 'ml' && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7"
+                                className="h-8 w-8"
                                 onClick={() => {
                                   setEditBottleSizeItemId(item.id);
                                   setEditBottleSizeValue(invItem.defaultBottleSize?.toString() || '750');
                                 }}
                               >
-                                <Pencil className="w-3 h-3" />
+                                <Pencil className="w-4 h-4" />
                               </Button>
                             )}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Inventory Categories</h3>
-            <Button onClick={() => setShowAddCategoryModal(true)} disabled={unTrackedCategories.length === 0}>
-              <Plus className="w-4 h-4 mr-2" /> Add Category
+            <h3 className="text-lg font-semibold">Inventory Items</h3>
+            <Button onClick={() => setShowAddItemModal(true)} disabled={unTrackedMenuItems.length === 0}>
+              <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
           </div>
 
-          {trackedCategories.length === 0 ? (
+          {inventoryMenuItems.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
                 <Settings2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No categories added to inventory.</p>
-                <p className="text-sm">Add a category to start tracking stock.</p>
+                <p>No items added to inventory.</p>
+                <p className="text-sm">Add items to start tracking stock.</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {trackedCategories.map(cat => {
-                const invCat = inventoryCategories.find(ic => ic.categoryId === cat.id);
-                const portions = portionOptions.filter(p => p.inventoryCategoryId === invCat?.id);
+            <div className="space-y-2">
+              {inventoryMenuItems.map(item => {
+                const invItem = inventoryItems.find(ii => ii.menuItemId === item.id);
+                if (!invItem) return null;
+                const portions = getPortionsByItem(item.id);
                 
                 return (
-                  <Card key={cat.id}>
+                  <Card key={item.id}>
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-medium">{cat.name}</h4>
+                          <h4 className="font-medium">{item.name}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Unit: {invCat?.unitType} • Threshold: {invCat?.lowStockThreshold}
+                            {item.category} • Unit: {invItem.unit} • Threshold: {invItem.lowStockThreshold}
                           </p>
                           <div className="flex flex-wrap gap-1 mt-2">
                             {portions.map(p => (
@@ -385,11 +397,11 @@ export function InventoryManager() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setPriceEditorCategoryId(cat.id)}
+                            onClick={() => setPriceEditorItem(item)}
                           >
                             <DollarSign className="w-4 h-4 mr-1" /> Set Prices
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveCategory(cat.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
@@ -403,20 +415,22 @@ export function InventoryManager() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Category Modal */}
-      <Dialog open={showAddCategoryModal} onOpenChange={setShowAddCategoryModal}>
+      {/* Add Item Modal */}
+      <Dialog open={showAddItemModal} onOpenChange={setShowAddItemModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Category to Inventory</DialogTitle>
+            <DialogTitle>Add Item to Inventory</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Category</label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+              <label className="text-sm font-medium">Menu Item</label>
+              <Select value={selectedMenuItem} onValueChange={setSelectedMenuItem}>
+                <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
                 <SelectContent>
-                  {unTrackedCategories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  {unTrackedMenuItems.map(item => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name} ({item.category})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -432,14 +446,27 @@ export function InventoryManager() {
                 </SelectContent>
               </Select>
             </div>
+            {selectedUnit === 'ml' && (
+              <div>
+                <label className="text-sm font-medium">Default Bottle Size (ml)</label>
+                <Select value={defaultBottleSize} onValueChange={setDefaultBottleSize}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DEFAULT_BOTTLE_SIZES.map(size => (
+                      <SelectItem key={size} value={size.toString()}>{size}ml</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium">Low Stock Threshold</label>
               <Input type="number" value={lowStockThreshold} onChange={e => setLowStockThreshold(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddCategoryModal(false)}>Cancel</Button>
-            <Button onClick={handleAddInventoryCategory}>Add Category</Button>
+            <Button variant="outline" onClick={() => setShowAddItemModal(false)}>Cancel</Button>
+            <Button onClick={handleAddInventoryItem}>Add Item</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -537,13 +564,12 @@ export function InventoryManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Category Price Editor */}
-      {priceEditorCategoryId && (
-        <CategoryPriceEditor
-          categoryId={priceEditorCategoryId}
-          categoryName={categories.find(c => c.id === priceEditorCategoryId)?.name || ''}
+      {/* Price Editor */}
+      {priceEditorItem && (
+        <PortionPriceEditor
+          menuItem={priceEditorItem}
           open={true}
-          onClose={() => setPriceEditorCategoryId(null)}
+          onClose={() => setPriceEditorItem(null)}
         />
       )}
 

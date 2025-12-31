@@ -12,7 +12,6 @@ import {
   waiterCallsApi,
   transactionsApi,
   categoriesApi,
-  inventoryCategoriesApi,
   inventoryItemsApi,
   inventoryTransactionsApi,
   portionOptionsApi,
@@ -50,7 +49,7 @@ export function DataProvider({ children }: DataProviderProps) {
       // Fetch all data from Supabase (including inventory)
       const [
         menuItems, orders, bills, customers, staff, settings, expenses, waiterCalls, transactions, categories,
-        inventoryCategories, inventoryItems, inventoryTransactions, portionOptions, itemPortionPrices, lowStockItems
+        inventoryItems, inventoryTransactions, portionOptions, itemPortionPrices, lowStockItems
       ] = await Promise.all([
         menuApi.getAll().catch(() => []),
         ordersApi.getAll().catch(() => []),
@@ -62,7 +61,6 @@ export function DataProvider({ children }: DataProviderProps) {
         waiterCallsApi.getAll().catch(() => []),
         transactionsApi.getAll().catch(() => []),
         categoriesApi.getAll().catch(() => []),
-        inventoryCategoriesApi.getAll().catch(() => []),
         inventoryItemsApi.getAll().catch(() => []),
         inventoryTransactionsApi.getAll().catch(() => []),
         portionOptionsApi.getAll().catch(() => []),
@@ -83,7 +81,6 @@ export function DataProvider({ children }: DataProviderProps) {
       store.setTransactions(transactions || []);
       store.setCategories(categories || []);
       // Inventory data
-      store.setInventoryCategories(inventoryCategories || []);
       store.setInventoryItems(inventoryItems || []);
       store.setInventoryTransactions(inventoryTransactions || []);
       store.setPortionOptions(portionOptions || []);

@@ -13,7 +13,6 @@ export {
   waiterCallsApi,
   transactionsApi,
   // Inventory APIs
-  inventoryCategoriesApi,
   inventoryItemsApi,
   inventoryTransactionsApi,
   portionOptionsApi,

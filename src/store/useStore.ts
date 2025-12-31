@@ -14,7 +14,6 @@ import {
   StaffRole,
   Transaction,
   WaiterCall,
-  InventoryCategory,
   InventoryItem,
   InventoryTransaction,
   PortionOption,
@@ -25,7 +24,7 @@ import {
 import { getNepalTimestamp, isToday } from '@/lib/nepalTime';
 import { 
   billsApi, customersApi, ordersApi, menuApi, settingsApi, expensesApi, waiterCallsApi, staffApi, transactionsApi, categoriesApi,
-  inventoryCategoriesApi, inventoryItemsApi, inventoryTransactionsApi, portionOptionsApi, itemPortionPricesApi, getLowStockItems
+  inventoryItemsApi, inventoryTransactionsApi, portionOptionsApi, itemPortionPricesApi, getLowStockItems
 } from '@/lib/apiClient';
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -171,12 +170,6 @@ interface StoreState extends AuthState {
   getPendingWaiterCalls: () => WaiterCall[];
 
   // Inventory
-  inventoryCategories: InventoryCategory[];
-  setInventoryCategories: (cats: InventoryCategory[]) => void;
-  addInventoryCategory: (cat: Omit<InventoryCategory, 'id' | 'createdAt'>) => void;
-  updateInventoryCategory: (id: string, cat: Partial<InventoryCategory>) => void;
-  deleteInventoryCategory: (id: string) => void;
-  
   inventoryItems: InventoryItem[];
   setInventoryItems: (items: InventoryItem[]) => void;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -194,7 +187,7 @@ interface StoreState extends AuthState {
   addPortionOption: (option: Omit<PortionOption, 'id' | 'createdAt'>) => void;
   updatePortionOption: (id: string, option: Partial<PortionOption>) => void;
   deletePortionOption: (id: string) => void;
-  getPortionsByCategory: (categoryName: string) => PortionOption[];
+  getPortionsByItem: (menuItemId: string) => PortionOption[];
   
   // Item-specific portion prices
   itemPortionPrices: ItemPortionPrice[];
@@ -205,7 +198,7 @@ interface StoreState extends AuthState {
   lowStockItems: LowStockItem[];
   setLowStockItems: (items: LowStockItem[]) => void;
   refreshLowStockItems: () => Promise<void>;
-  isInventoryCategory: (categoryId: string) => boolean;
+  isInventoryItem: (menuItemId: string) => boolean;
 
   // Stats
   getTodayStats: () => { revenue: number; orders: number; activeOrders: number; activeTables: number };
@@ -836,35 +829,6 @@ export const useStore = create<StoreState>()((set, get) => ({
   // INVENTORY MANAGEMENT
   // ===========================================
   
-  // Inventory Categories
-  inventoryCategories: [],
-  setInventoryCategories: (cats) => set({ inventoryCategories: cats }),
-  
-  addInventoryCategory: (cat) => {
-    const newCat: InventoryCategory = { 
-      ...cat, 
-      id: generateId(), 
-      createdAt: getNepalTimestamp() 
-    };
-    set((state) => ({ inventoryCategories: [...state.inventoryCategories, newCat] }));
-    syncToBackend(() => inventoryCategoriesApi.create(newCat));
-  },
-  
-  updateInventoryCategory: (id, cat) => {
-    const current = get().inventoryCategories.find(c => c.id === id);
-    if (!current) return;
-    const updated = { ...current, ...cat };
-    set((state) => ({
-      inventoryCategories: state.inventoryCategories.map(c => c.id === id ? updated : c)
-    }));
-    syncToBackend(() => inventoryCategoriesApi.update(id, updated));
-  },
-  
-  deleteInventoryCategory: (id) => {
-    set((state) => ({ inventoryCategories: state.inventoryCategories.filter(c => c.id !== id) }));
-    syncToBackend(() => inventoryCategoriesApi.delete(id));
-  },
-  
   // Inventory Items
   inventoryItems: [],
   setInventoryItems: (items) => set({ inventoryItems: items }),
@@ -993,14 +957,10 @@ export const useStore = create<StoreState>()((set, get) => ({
     syncToBackend(() => portionOptionsApi.delete(id));
   },
   
-  getPortionsByCategory: (categoryName) => {
-    const category = get().categories.find(c => c.name === categoryName);
-    if (!category) return [];
-    
-    const invCat = get().inventoryCategories.find(ic => ic.categoryId === category.id);
-    if (!invCat) return [];
-    
-    return get().portionOptions.filter(p => p.inventoryCategoryId === invCat.id);
+  getPortionsByItem: (menuItemId) => {
+    const invItem = get().inventoryItems.find(i => i.menuItemId === menuItemId);
+    if (!invItem) return [];
+    return get().portionOptions.filter(p => p.inventoryItemId === invItem.id);
   },
   
   // Item Portion Prices
@@ -1056,8 +1016,8 @@ export const useStore = create<StoreState>()((set, get) => ({
     }
   },
   
-  isInventoryCategory: (categoryId) => 
-    get().inventoryCategories.some(ic => ic.categoryId === categoryId),
+  isInventoryItem: (menuItemId) => 
+    get().inventoryItems.some(i => i.menuItemId === menuItemId),
 
   // Stats
   getTodayStats: () => {

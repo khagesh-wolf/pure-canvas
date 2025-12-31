@@ -103,7 +103,7 @@ function StaffApprovalInput({ onApprove }: { onApprove: () => void }) {
 export default function TableOrder() {
   const { tableNumber } = useParams();
   const navigate = useNavigate();
-  const { menuItems, categories, settings, addOrder, getCustomerPoints, updateOrderStatus, callWaiter, waiterCalls, bills, getPortionsByCategory, getInventoryByMenuItemId } = useStore();
+  const { menuItems, categories, settings, addOrder, getCustomerPoints, updateOrderStatus, callWaiter, waiterCalls, bills, getPortionsByItem, getInventoryByMenuItemId } = useStore();
   
   const [phone, setPhone] = useState('');
   const [isPhoneEntered, setIsPhoneEntered] = useState(false);

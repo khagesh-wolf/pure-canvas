@@ -11,26 +11,14 @@ interface PortionSelectorProps {
 }
 
 export function PortionSelector({ item, open, onClose, onSelect }: PortionSelectorProps) {
-  const { getPortionsByCategory, getItemPortionPrice, inventoryCategories, categories } = useStore();
-  const portions = getPortionsByCategory(item.category);
+  const { getPortionsByItem, getInventoryByMenuItemId } = useStore();
+  const portions = getPortionsByItem(item.id);
   
-  // Get the inventory category for unit display
-  const category = categories.find(c => c.name === item.category);
-  const invCat = inventoryCategories.find(ic => ic.categoryId === category?.id);
-  
-  // Get price for portion - returns null if no price set (item should be hidden from customers)
-  const getPortionPrice = (portion: PortionOption): number | null => {
-    // Check for item-specific price - this is the only valid price source
-    const itemPrice = getItemPortionPrice(item.id, portion.id);
-    if (itemPrice != null) {
-      return itemPrice;
-    }
-    // No price set - return null to indicate this portion should be hidden
-    return null;
-  };
+  // Get the inventory item for unit display
+  const invItem = getInventoryByMenuItemId(item.id);
   
   // Filter out portions without prices
-  const portionsWithPrices = portions.filter(p => getPortionPrice(p) !== null);
+  const portionsWithPrices = portions.filter(p => p.fixedPrice != null);
 
   if (portionsWithPrices.length === 0) return null;
 
@@ -51,7 +39,7 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
           {portionsWithPrices
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map(portion => {
-              const price = getPortionPrice(portion)!;
+              const price = portion.fixedPrice!;
               return (
                 <button
                   key={portion.id}
@@ -64,7 +52,7 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
                   <div className="text-left">
                     <div className="font-semibold text-foreground">{portion.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {portion.size} {invCat?.unitType || 'units'}
+                      {portion.size} {invItem?.unit || 'units'}
                     </div>
                   </div>
                   <div className="text-lg font-bold text-primary">
