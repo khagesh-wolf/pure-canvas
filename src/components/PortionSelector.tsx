@@ -1,7 +1,6 @@
 import { useStore } from '@/store/useStore';
 import { MenuItem, PortionOption } from '@/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Plus, Minus } from 'lucide-react';
+import { Plus, Minus, ShoppingBag } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface PortionSelectorProps {
@@ -31,7 +30,7 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
     }
   }, [open]);
 
-  if (portionsWithPrices.length === 0) return null;
+  if (!open || portionsWithPrices.length === 0) return null;
 
   const getQuantity = (portionId: string) => quantities[portionId] || 0;
 
@@ -65,76 +64,124 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
   }, 0);
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm mx-auto rounded-2xl p-0 overflow-hidden z-[2000]">
-        <DialogHeader className="p-4 pb-2 border-b border-border">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold">{item.name}</DialogTitle>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-              <X className="w-5 h-5" />
-            </button>
+    <>
+      {/* Overlay */}
+      <div 
+        className="fixed inset-0 bg-black/60 z-[2000] transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Bottom Sheet */}
+      <div className="fixed bottom-0 left-0 right-0 z-[2001] animate-slide-up">
+        <div className="bg-card rounded-t-[24px] shadow-[0_-10px_40px_rgba(0,0,0,0.2)] max-h-[85vh] flex flex-col">
+          {/* Handle bar */}
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
           </div>
-          <p className="text-sm text-muted-foreground">Select quantity for each portion</p>
-        </DialogHeader>
-        
-        <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
-          {portionsWithPrices
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map(portion => {
-              const price = portion.fixedPrice!;
-              const qty = getQuantity(portion.id);
-              return (
-                <div
-                  key={portion.id}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border border-border bg-card"
-                >
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-foreground">{portion.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {portion.size} {invItem?.unit || 'units'}
+          
+          {/* Header */}
+          <div className="px-5 pb-4 border-b border-border">
+            <h2 className="text-xl font-bold text-foreground">{item.name}</h2>
+            <p className="text-sm text-muted-foreground mt-1">Choose portion size & quantity</p>
+          </div>
+          
+          {/* Portions List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {portionsWithPrices
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map(portion => {
+                const price = portion.fixedPrice!;
+                const qty = getQuantity(portion.id);
+                const isSelected = qty > 0;
+                return (
+                  <div
+                    key={portion.id}
+                    className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
+                      isSelected 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border bg-background hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{portion.name}</span>
+                        <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full">
+                          {portion.size} {invItem?.unit || 'units'}
+                        </span>
+                      </div>
+                      <div className="text-lg font-bold text-primary mt-1">
+                        Rs {price}
+                      </div>
                     </div>
-                    <div className="text-sm font-bold text-primary mt-1">
-                      Rs {price}
+                    
+                    <div className="flex items-center gap-1">
+                      {qty > 0 ? (
+                        <>
+                          <button
+                            onClick={() => decrementQuantity(portion.id)}
+                            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground hover:bg-muted/80 active:scale-95 transition-all"
+                          >
+                            <Minus className="w-5 h-5" />
+                          </button>
+                          <span className="w-10 text-center font-bold text-lg text-foreground">{qty}</span>
+                          <button
+                            onClick={() => incrementQuantity(portion.id)}
+                            className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => incrementQuantity(portion.id)}
+                          className="px-5 py-2.5 rounded-full bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 active:scale-95 transition-all"
+                        >
+                          Add
+                        </button>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => decrementQuantity(portion.id)}
-                      disabled={qty === 0}
-                      className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-muted/80 active:scale-95 transition-all"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-8 text-center font-semibold text-lg">{qty}</span>
-                    <button
-                      onClick={() => incrementQuantity(portion.id)}
-                      className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+          </div>
+          
+          {/* Footer */}
+          <div className="p-4 border-t border-border bg-card safe-area-bottom">
+            {totalItems > 0 ? (
+              <button 
+                onClick={handleAddToCart}
+                className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center gap-3 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                <span>Add {totalItems} to Cart</span>
+                <span className="bg-primary-foreground/20 px-3 py-1 rounded-full text-sm">
+                  Rs {totalPrice}
+                </span>
+              </button>
+            ) : (
+              <button 
+                onClick={onClose}
+                className="w-full py-4 rounded-2xl bg-muted text-muted-foreground font-semibold text-lg hover:bg-muted/80 transition-all"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
-        
-        <div className="p-4 pt-2 border-t border-border space-y-3">
-          {totalItems > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{totalItems} item{totalItems > 1 ? 's' : ''}</span>
-              <span className="font-bold text-foreground">Rs {totalPrice}</span>
-            </div>
-          )}
-          <button 
-            onClick={handleAddToCart}
-            disabled={totalItems === 0}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {totalItems > 0 ? `Add ${totalItems} to Cart` : 'Select Portions'}
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+      
+      <style>{`
+        @keyframes slide-up {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+        .safe-area-bottom {
+          padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+      `}</style>
+    </>
   );
 }
