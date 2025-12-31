@@ -3,6 +3,7 @@ export interface Category {
   name: string;
   sortOrder: number;
   prepTime?: number; // Average prep time in minutes
+  parentId?: string; // For subcategories (e.g., "Beers" under "Drinks")
 }
 
 export interface MenuItem {

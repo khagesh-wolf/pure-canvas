@@ -77,7 +77,8 @@ export default function Admin() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryPrepTime, setNewCategoryPrepTime] = useState('5');
-  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; prepTime?: number } | null>(null);
+  const [newCategoryParentId, setNewCategoryParentId] = useState<string | undefined>(undefined);
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; prepTime?: number; parentId?: string } | null>(null);
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -2289,7 +2290,7 @@ export default function Admin() {
 
       {/* Category Manager Modal */}
       <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
-        <DialogContent className="max-w-md w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Manage Categories</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             {/* Add new category */}
@@ -2303,19 +2304,33 @@ export default function Admin() {
                 />
                 <Input 
                   type="number"
-                  placeholder="Prep time"
+                  placeholder="Prep"
                   value={newCategoryPrepTime}
                   onChange={e => setNewCategoryPrepTime(e.target.value)}
-                  className="w-20"
+                  className="w-16"
                   min="1"
                   max="60"
                 />
+              </div>
+              <div className="flex gap-2">
+                <Select value={newCategoryParentId || '_none'} onValueChange={(v) => setNewCategoryParentId(v === '_none' ? undefined : v)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Parent (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">No parent (main category)</SelectItem>
+                    {categories.filter(c => !c.parentId).map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button 
                   onClick={() => {
                     if (newCategoryName.trim()) {
-                      addCategory(newCategoryName.trim(), parseInt(newCategoryPrepTime) || 5);
+                      addCategory(newCategoryName.trim(), parseInt(newCategoryPrepTime) || 5, newCategoryParentId);
                       setNewCategoryName('');
                       setNewCategoryPrepTime('5');
+                      setNewCategoryParentId(undefined);
                       toast.success('Category added');
                     }
                   }}
@@ -2325,181 +2340,227 @@ export default function Admin() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Prep time is in minutes (used for wait time estimation)
+                Main categories show in tabs. Subcategories group items within a main category.
               </p>
             </div>
 
             <p className="text-xs text-muted-foreground">
               <GripVertical className="w-3 h-3 inline mr-1" />
-              Drag and drop to reorder categories. Order affects how they appear to customers.
+              Drag and drop to reorder. Subcategories are shown indented under their parent.
             </p>
             
-            {/* Category list - sorted by sortOrder */}
-            <div className="space-y-2 max-h-64 overflow-y-auto category-list-container">
+            {/* Category list - hierarchical display */}
+            <div className="space-y-1 max-h-80 overflow-y-auto category-list-container">
               {categories.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">No categories yet. Add one above.</p>
               ) : (
-                [...categories].sort((a, b) => a.sortOrder - b.sortOrder).map((cat, index) => (
-                  <div 
-                    key={cat.id} 
-                    className="flex items-center gap-2 p-2 bg-muted rounded-lg transition-all touch-none"
-                    draggable={editingCategory?.id !== cat.id}
-                    onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', String(index));
-                      (e.currentTarget as HTMLElement).classList.add('opacity-50');
-                    }}
-                    onDragEnd={(e) => {
-                      (e.currentTarget as HTMLElement).classList.remove('opacity-50');
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'move';
-                      (e.currentTarget as HTMLElement).classList.add('ring-2', 'ring-primary');
-                    }}
-                    onDragLeave={(e) => {
-                      (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-primary');
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-primary');
-                      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                      if (fromIndex !== index) {
-                        reorderCategories(fromIndex, index);
-                        toast.success('Category reordered');
-                      }
-                    }}
-                    onTouchStart={(e) => {
-                      if (editingCategory?.id === cat.id) return;
-                      const element = e.currentTarget as HTMLElement;
-                      element.dataset.dragIndex = String(index);
-                      element.classList.add('opacity-50');
-                      element.style.transform = 'scale(1.02)';
-                    }}
-                    onTouchMove={(e) => {
-                      if (editingCategory?.id === cat.id) return;
-                      e.preventDefault();
-                      const touch = e.touches[0];
-                      const container = document.querySelector('.category-list-container');
-                      if (!container) return;
-                      
-                      const items = Array.from(container.children) as HTMLElement[];
-                      items.forEach((item, i) => {
-                        const rect = item.getBoundingClientRect();
-                        const midY = rect.top + rect.height / 2;
-                        if (touch.clientY > rect.top && touch.clientY < rect.bottom) {
-                          item.dataset.dropTarget = 'true';
-                          item.classList.add('ring-2', 'ring-primary');
-                        } else {
-                          item.dataset.dropTarget = '';
-                          item.classList.remove('ring-2', 'ring-primary');
-                        }
-                      });
-                    }}
-                    onTouchEnd={(e) => {
-                      if (editingCategory?.id === cat.id) return;
-                      const element = e.currentTarget as HTMLElement;
-                      element.classList.remove('opacity-50');
-                      element.style.transform = '';
-                      
-                      const container = document.querySelector('.category-list-container');
-                      if (!container) return;
-                      
-                      const items = Array.from(container.children) as HTMLElement[];
-                      const fromIndex = index;
-                      let toIndex = -1;
-                      
-                      items.forEach((item, i) => {
-                        if (item.dataset.dropTarget === 'true') {
-                          toIndex = i;
-                        }
-                        item.dataset.dropTarget = '';
-                        item.classList.remove('ring-2', 'ring-primary');
-                      });
-                      
-                      if (toIndex !== -1 && fromIndex !== toIndex) {
-                        reorderCategories(fromIndex, toIndex);
-                        toast.success('Category reordered');
-                      }
-                    }}
-                  >
-                    {editingCategory?.id === cat.id ? (
-                      <>
-                        <Input 
-                          value={editingCategory.name}
-                          onChange={e => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && editingCategory.name.trim()) {
-                              updateCategory(cat.id, editingCategory.name.trim(), editingCategory.prepTime);
-                              setEditingCategory(null);
-                              toast.success('Category updated');
-                            } else if (e.key === 'Escape') {
-                              setEditingCategory(null);
-                            }
+                // First show main categories (no parent), then subcategories under each
+                [...categories]
+                  .filter(c => !c.parentId)
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((mainCat, mainIndex) => {
+                    const subcategories = categories.filter(c => c.parentId === mainCat.id).sort((a, b) => a.sortOrder - b.sortOrder);
+                    return (
+                      <div key={mainCat.id}>
+                        {/* Main category */}
+                        <div 
+                          className="flex items-center gap-2 p-2 bg-muted rounded-lg transition-all touch-none"
+                          draggable={editingCategory?.id !== mainCat.id}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', String(mainIndex));
+                            (e.currentTarget as HTMLElement).classList.add('opacity-50');
                           }}
-                          autoFocus
-                          className="flex-1"
-                          placeholder="Category name"
-                        />
-                        <Input 
-                          type="number"
-                          value={editingCategory.prepTime || 5}
-                          onChange={e => setEditingCategory({ ...editingCategory, prepTime: parseInt(e.target.value) || 5 })}
-                          className="w-16"
-                          min="1"
-                          max="60"
-                          placeholder="min"
-                        />
-                        <Button size="sm" variant="ghost" onClick={() => {
-                          if (editingCategory.name.trim()) {
-                            updateCategory(cat.id, editingCategory.name.trim(), editingCategory.prepTime);
-                            setEditingCategory(null);
-                            toast.success('Category updated');
-                          }
-                        }}>
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingCategory(null)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {/* Drag handle */}
-                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-                        
-                        <span className="flex-1 font-medium">{cat.name}</span>
-                        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                          {cat.prepTime || 5}m
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {menuItems.filter(m => m.category === cat.name).length} items
-                        </span>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingCategory({ id: cat.id, name: cat.name, prepTime: cat.prepTime || 5 })}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => {
-                            const itemCount = menuItems.filter(m => m.category === cat.name).length;
-                            if (itemCount > 0) {
-                              toast.error(`Cannot delete: ${itemCount} items use this category`);
-                              return;
-                            }
-                            if (confirm(`Delete category "${cat.name}"?`)) {
-                              deleteCategory(cat.id);
-                              toast.success('Category deleted');
+                          onDragEnd={(e) => {
+                            (e.currentTarget as HTMLElement).classList.remove('opacity-50');
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            (e.currentTarget as HTMLElement).classList.add('ring-2', 'ring-primary');
+                          }}
+                          onDragLeave={(e) => {
+                            (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-primary');
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-primary');
+                            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                            if (fromIndex !== mainIndex) {
+                              reorderCategories(fromIndex, mainIndex);
+                              toast.success('Category reordered');
                             }
                           }}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))
+                          {editingCategory?.id === mainCat.id ? (
+                            <>
+                              <Input 
+                                value={editingCategory.name}
+                                onChange={e => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && editingCategory.name.trim()) {
+                                    updateCategory(mainCat.id, editingCategory.name.trim(), editingCategory.prepTime, editingCategory.parentId);
+                                    setEditingCategory(null);
+                                    toast.success('Category updated');
+                                  } else if (e.key === 'Escape') {
+                                    setEditingCategory(null);
+                                  }
+                                }}
+                                autoFocus
+                                className="flex-1"
+                                placeholder="Category name"
+                              />
+                              <Input 
+                                type="number"
+                                value={editingCategory.prepTime || 5}
+                                onChange={e => setEditingCategory({ ...editingCategory, prepTime: parseInt(e.target.value) || 5 })}
+                                className="w-14"
+                                min="1"
+                                max="60"
+                              />
+                              <Button size="sm" variant="ghost" onClick={() => {
+                                if (editingCategory.name.trim()) {
+                                  updateCategory(mainCat.id, editingCategory.name.trim(), editingCategory.prepTime, editingCategory.parentId);
+                                  setEditingCategory(null);
+                                  toast.success('Category updated');
+                                }
+                              }}>
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingCategory(null)}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                              <span className="flex-1 font-medium">{mainCat.name}</span>
+                              <span className="text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">
+                                {mainCat.prepTime || 5}m
+                              </span>
+                              {subcategories.length > 0 && (
+                                <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                  {subcategories.length} sub
+                                </span>
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {menuItems.filter(m => m.category === mainCat.name || subcategories.some(sc => sc.name === m.category)).length} items
+                              </span>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingCategory({ id: mainCat.id, name: mainCat.name, prepTime: mainCat.prepTime || 5, parentId: mainCat.parentId })}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  const itemCount = menuItems.filter(m => m.category === mainCat.name).length;
+                                  const hasSubcategories = subcategories.length > 0;
+                                  if (hasSubcategories) {
+                                    toast.error(`Cannot delete: has ${subcategories.length} subcategories`);
+                                    return;
+                                  }
+                                  if (itemCount > 0) {
+                                    toast.error(`Cannot delete: ${itemCount} items use this category`);
+                                    return;
+                                  }
+                                  if (confirm(`Delete category "${mainCat.name}"?`)) {
+                                    deleteCategory(mainCat.id);
+                                    toast.success('Category deleted');
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Subcategories */}
+                        {subcategories.map((subCat) => (
+                          <div 
+                            key={subCat.id}
+                            className="flex items-center gap-2 p-2 ml-6 bg-muted/50 rounded-lg border-l-2 border-primary/30 mt-1"
+                          >
+                            {editingCategory?.id === subCat.id ? (
+                              <>
+                                <Input 
+                                  value={editingCategory.name}
+                                  onChange={e => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter' && editingCategory.name.trim()) {
+                                      updateCategory(subCat.id, editingCategory.name.trim(), editingCategory.prepTime, editingCategory.parentId);
+                                      setEditingCategory(null);
+                                      toast.success('Subcategory updated');
+                                    } else if (e.key === 'Escape') {
+                                      setEditingCategory(null);
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="flex-1"
+                                  placeholder="Subcategory name"
+                                />
+                                <Select 
+                                  value={editingCategory.parentId || '_none'} 
+                                  onValueChange={(v) => setEditingCategory({ ...editingCategory, parentId: v === '_none' ? undefined : v })}
+                                >
+                                  <SelectTrigger className="w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="_none">No parent</SelectItem>
+                                    {categories.filter(c => !c.parentId && c.id !== subCat.id).map(c => (
+                                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button size="sm" variant="ghost" onClick={() => {
+                                  if (editingCategory.name.trim()) {
+                                    updateCategory(subCat.id, editingCategory.name.trim(), editingCategory.prepTime, editingCategory.parentId);
+                                    setEditingCategory(null);
+                                    toast.success('Subcategory updated');
+                                  }
+                                }}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingCategory(null)}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="flex-1 text-sm">{subCat.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {menuItems.filter(m => m.category === subCat.name).length} items
+                                </span>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingCategory({ id: subCat.id, name: subCat.name, prepTime: subCat.prepTime || 5, parentId: subCat.parentId })}>
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    const itemCount = menuItems.filter(m => m.category === subCat.name).length;
+                                    if (itemCount > 0) {
+                                      toast.error(`Cannot delete: ${itemCount} items use this subcategory`);
+                                      return;
+                                    }
+                                    if (confirm(`Delete subcategory "${subCat.name}"?`)) {
+                                      deleteCategory(subCat.id);
+                                      toast.success('Subcategory deleted');
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })
               )}
             </div>
           </div>

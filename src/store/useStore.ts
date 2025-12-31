@@ -94,8 +94,8 @@ interface StoreState extends AuthState {
   // Categories
   categories: Category[];
   setCategories: (categories: Category[]) => void;
-  addCategory: (name: string, prepTime?: number) => void;
-  updateCategory: (id: string, name: string, prepTime?: number) => void;
+  addCategory: (name: string, prepTime?: number, parentId?: string) => void;
+  updateCategory: (id: string, name: string, prepTime?: number, parentId?: string) => void;
   deleteCategory: (id: string) => void;
   reorderCategories: (fromIndex: number, toIndex: number) => void;
 
@@ -247,17 +247,22 @@ export const useStore = create<StoreState>()((set, get) => ({
   categories: [],
   setCategories: (categories) => set({ categories }),
 
-  addCategory: (name, prepTime) => {
+  addCategory: (name, prepTime, parentId) => {
     const maxOrder = Math.max(0, ...get().categories.map(c => c.sortOrder));
-    const newCategory = { id: generateId(), name, sortOrder: maxOrder + 1, prepTime: prepTime || 5 };
+    const newCategory = { id: generateId(), name, sortOrder: maxOrder + 1, prepTime: prepTime || 5, parentId };
     set((state) => ({ categories: [...state.categories, newCategory] }));
     syncToBackend(() => categoriesApi.create(newCategory));
   },
 
-  updateCategory: (id, name, prepTime) => {
+  updateCategory: (id, name, prepTime, parentId) => {
     const category = get().categories.find(c => c.id === id);
     if (!category) return;
-    const updated = { ...category, name, prepTime: prepTime !== undefined ? prepTime : category.prepTime };
+    const updated = { 
+      ...category, 
+      name, 
+      prepTime: prepTime !== undefined ? prepTime : category.prepTime,
+      parentId: parentId !== undefined ? parentId : category.parentId
+    };
     set((state) => ({
       categories: state.categories.map(c => c.id === id ? updated : c)
     }));
