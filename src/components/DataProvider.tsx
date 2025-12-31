@@ -12,6 +12,11 @@ import {
   waiterCallsApi,
   transactionsApi,
   categoriesApi,
+  inventoryCategoriesApi,
+  inventoryItemsApi,
+  inventoryTransactionsApi,
+  portionOptionsApi,
+  getLowStockItems,
   checkBackendHealth,
 } from '@/lib/apiClient';
 import { Loader2, Cloud, CloudOff } from 'lucide-react';
@@ -41,8 +46,11 @@ export function DataProvider({ children }: DataProviderProps) {
         throw new Error('Cannot connect to database. Please check your Supabase configuration.');
       }
 
-      // Fetch all data from Supabase
-      const [menuItems, orders, bills, customers, staff, settings, expenses, waiterCalls, transactions, categories] = await Promise.all([
+      // Fetch all data from Supabase (including inventory)
+      const [
+        menuItems, orders, bills, customers, staff, settings, expenses, waiterCalls, transactions, categories,
+        inventoryCategories, inventoryItems, inventoryTransactions, portionOptions, lowStockItems
+      ] = await Promise.all([
         menuApi.getAll().catch(() => []),
         ordersApi.getAll().catch(() => []),
         billsApi.getAll().catch(() => []),
@@ -53,6 +61,11 @@ export function DataProvider({ children }: DataProviderProps) {
         waiterCallsApi.getAll().catch(() => []),
         transactionsApi.getAll().catch(() => []),
         categoriesApi.getAll().catch(() => []),
+        inventoryCategoriesApi.getAll().catch(() => []),
+        inventoryItemsApi.getAll().catch(() => []),
+        inventoryTransactionsApi.getAll().catch(() => []),
+        portionOptionsApi.getAll().catch(() => []),
+        getLowStockItems().catch(() => []),
       ]);
 
       // Update store with backend data
@@ -67,6 +80,12 @@ export function DataProvider({ children }: DataProviderProps) {
       store.setWaiterCalls(waiterCalls || []);
       store.setTransactions(transactions || []);
       store.setCategories(categories || []);
+      // Inventory data
+      store.setInventoryCategories(inventoryCategories || []);
+      store.setInventoryItems(inventoryItems || []);
+      store.setInventoryTransactions(inventoryTransactions || []);
+      store.setPortionOptions(portionOptions || []);
+      store.setLowStockItems(lowStockItems || []);
       store.setDataLoaded(true);
 
       hasLoadedRef.current = true;

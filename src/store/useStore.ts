@@ -14,9 +14,18 @@ import {
   StaffRole,
   Transaction,
   WaiterCall,
+  InventoryCategory,
+  InventoryItem,
+  InventoryTransaction,
+  PortionOption,
+  LowStockItem,
+  InventoryUnitType,
 } from '@/types';
 import { getNepalTimestamp, isToday } from '@/lib/nepalTime';
-import { billsApi, customersApi, ordersApi, menuApi, settingsApi, expensesApi, waiterCallsApi, staffApi, transactionsApi, categoriesApi } from '@/lib/apiClient';
+import { 
+  billsApi, customersApi, ordersApi, menuApi, settingsApi, expensesApi, waiterCallsApi, staffApi, transactionsApi, categoriesApi,
+  inventoryCategoriesApi, inventoryItemsApi, inventoryTransactionsApi, portionOptionsApi, getLowStockItems
+} from '@/lib/apiClient';
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
 
@@ -159,6 +168,37 @@ interface StoreState extends AuthState {
   acknowledgeWaiterCall: (id: string) => void;
   dismissWaiterCall: (id: string) => void;
   getPendingWaiterCalls: () => WaiterCall[];
+
+  // Inventory
+  inventoryCategories: InventoryCategory[];
+  setInventoryCategories: (cats: InventoryCategory[]) => void;
+  addInventoryCategory: (cat: Omit<InventoryCategory, 'id' | 'createdAt'>) => void;
+  updateInventoryCategory: (id: string, cat: Partial<InventoryCategory>) => void;
+  deleteInventoryCategory: (id: string) => void;
+  
+  inventoryItems: InventoryItem[];
+  setInventoryItems: (items: InventoryItem[]) => void;
+  addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateInventoryItem: (id: string, item: Partial<InventoryItem>) => void;
+  deleteInventoryItem: (id: string) => void;
+  addStock: (menuItemId: string, quantity: number, unit: InventoryUnitType, notes?: string) => void;
+  deductStock: (menuItemId: string, quantity: number, unit: InventoryUnitType, orderId?: string) => void;
+  getInventoryByMenuItemId: (menuItemId: string) => InventoryItem | undefined;
+  
+  inventoryTransactions: InventoryTransaction[];
+  setInventoryTransactions: (txs: InventoryTransaction[]) => void;
+  
+  portionOptions: PortionOption[];
+  setPortionOptions: (options: PortionOption[]) => void;
+  addPortionOption: (option: Omit<PortionOption, 'id' | 'createdAt'>) => void;
+  updatePortionOption: (id: string, option: Partial<PortionOption>) => void;
+  deletePortionOption: (id: string) => void;
+  getPortionsByCategory: (categoryName: string) => PortionOption[];
+  
+  lowStockItems: LowStockItem[];
+  setLowStockItems: (items: LowStockItem[]) => void;
+  refreshLowStockItems: () => Promise<void>;
+  isInventoryCategory: (categoryId: string) => boolean;
 
   // Stats
   getTodayStats: () => { revenue: number; orders: number; activeOrders: number; activeTables: number };
@@ -766,6 +806,193 @@ export const useStore = create<StoreState>()((set, get) => ({
   },
 
   getPendingWaiterCalls: () => get().waiterCalls.filter(c => c.status === 'pending'),
+
+  // ===========================================
+  // INVENTORY MANAGEMENT
+  // ===========================================
+  
+  // Inventory Categories
+  inventoryCategories: [],
+  setInventoryCategories: (cats) => set({ inventoryCategories: cats }),
+  
+  addInventoryCategory: (cat) => {
+    const newCat: InventoryCategory = { 
+      ...cat, 
+      id: generateId(), 
+      createdAt: getNepalTimestamp() 
+    };
+    set((state) => ({ inventoryCategories: [...state.inventoryCategories, newCat] }));
+    syncToBackend(() => inventoryCategoriesApi.create(newCat));
+  },
+  
+  updateInventoryCategory: (id, cat) => {
+    const current = get().inventoryCategories.find(c => c.id === id);
+    if (!current) return;
+    const updated = { ...current, ...cat };
+    set((state) => ({
+      inventoryCategories: state.inventoryCategories.map(c => c.id === id ? updated : c)
+    }));
+    syncToBackend(() => inventoryCategoriesApi.update(id, updated));
+  },
+  
+  deleteInventoryCategory: (id) => {
+    set((state) => ({ inventoryCategories: state.inventoryCategories.filter(c => c.id !== id) }));
+    syncToBackend(() => inventoryCategoriesApi.delete(id));
+  },
+  
+  // Inventory Items
+  inventoryItems: [],
+  setInventoryItems: (items) => set({ inventoryItems: items }),
+  
+  addInventoryItem: (item) => {
+    const now = getNepalTimestamp();
+    const newItem: InventoryItem = { 
+      ...item, 
+      id: generateId(), 
+      createdAt: now,
+      updatedAt: now
+    };
+    set((state) => ({ inventoryItems: [...state.inventoryItems, newItem] }));
+    syncToBackend(() => inventoryItemsApi.create(newItem));
+  },
+  
+  updateInventoryItem: (id, item) => {
+    const current = get().inventoryItems.find(i => i.id === id);
+    if (!current) return;
+    const updated = { ...current, ...item, updatedAt: getNepalTimestamp() };
+    set((state) => ({
+      inventoryItems: state.inventoryItems.map(i => i.id === id ? updated : i)
+    }));
+    syncToBackend(() => inventoryItemsApi.update(id, updated));
+  },
+  
+  deleteInventoryItem: (id) => {
+    set((state) => ({ inventoryItems: state.inventoryItems.filter(i => i.id !== id) }));
+    syncToBackend(() => inventoryItemsApi.delete(id));
+  },
+  
+  addStock: (menuItemId, quantity, unit, notes) => {
+    const invItem = get().inventoryItems.find(i => i.menuItemId === menuItemId);
+    if (!invItem) return;
+    
+    const newStock = invItem.currentStock + quantity;
+    const updated = { ...invItem, currentStock: newStock, updatedAt: getNepalTimestamp() };
+    
+    set((state) => ({
+      inventoryItems: state.inventoryItems.map(i => i.id === invItem.id ? updated : i)
+    }));
+    
+    // Create transaction record
+    const tx: InventoryTransaction = {
+      id: generateId(),
+      inventoryItemId: invItem.id,
+      transactionType: 'receive',
+      quantity,
+      unit,
+      notes: notes || '',
+      createdBy: get().currentUser?.name || '',
+      createdAt: getNepalTimestamp()
+    };
+    
+    set((state) => ({ inventoryTransactions: [...state.inventoryTransactions, tx] }));
+    
+    syncToBackend(() => inventoryItemsApi.updateStock(invItem.id, newStock));
+    syncToBackend(() => inventoryTransactionsApi.create(tx));
+  },
+  
+  deductStock: (menuItemId, quantity, unit, orderId) => {
+    const invItem = get().inventoryItems.find(i => i.menuItemId === menuItemId);
+    if (!invItem) return;
+    
+    const newStock = Math.max(0, invItem.currentStock - quantity);
+    const updated = { ...invItem, currentStock: newStock, updatedAt: getNepalTimestamp() };
+    
+    set((state) => ({
+      inventoryItems: state.inventoryItems.map(i => i.id === invItem.id ? updated : i)
+    }));
+    
+    // Create transaction record
+    const tx: InventoryTransaction = {
+      id: generateId(),
+      inventoryItemId: invItem.id,
+      transactionType: 'sale',
+      quantity: -quantity,
+      unit,
+      orderId,
+      createdBy: get().currentUser?.name || '',
+      createdAt: getNepalTimestamp()
+    };
+    
+    set((state) => ({ inventoryTransactions: [...state.inventoryTransactions, tx] }));
+    
+    syncToBackend(() => inventoryItemsApi.updateStock(invItem.id, newStock));
+    syncToBackend(() => inventoryTransactionsApi.create(tx));
+    
+    // Refresh low stock items
+    get().refreshLowStockItems();
+  },
+  
+  getInventoryByMenuItemId: (menuItemId) => 
+    get().inventoryItems.find(i => i.menuItemId === menuItemId),
+  
+  // Inventory Transactions
+  inventoryTransactions: [],
+  setInventoryTransactions: (txs) => set({ inventoryTransactions: txs }),
+  
+  // Portion Options
+  portionOptions: [],
+  setPortionOptions: (options) => set({ portionOptions: options }),
+  
+  addPortionOption: (option) => {
+    const newOption: PortionOption = { 
+      ...option, 
+      id: generateId(), 
+      createdAt: getNepalTimestamp() 
+    };
+    set((state) => ({ portionOptions: [...state.portionOptions, newOption] }));
+    syncToBackend(() => portionOptionsApi.create(newOption));
+  },
+  
+  updatePortionOption: (id, option) => {
+    const current = get().portionOptions.find(o => o.id === id);
+    if (!current) return;
+    const updated = { ...current, ...option };
+    set((state) => ({
+      portionOptions: state.portionOptions.map(o => o.id === id ? updated : o)
+    }));
+    syncToBackend(() => portionOptionsApi.update(id, updated));
+  },
+  
+  deletePortionOption: (id) => {
+    set((state) => ({ portionOptions: state.portionOptions.filter(o => o.id !== id) }));
+    syncToBackend(() => portionOptionsApi.delete(id));
+  },
+  
+  getPortionsByCategory: (categoryName) => {
+    const category = get().categories.find(c => c.name === categoryName);
+    if (!category) return [];
+    
+    const invCat = get().inventoryCategories.find(ic => ic.categoryId === category.id);
+    if (!invCat) return [];
+    
+    return get().portionOptions.filter(p => p.inventoryCategoryId === invCat.id);
+  },
+  
+  // Low Stock Items
+  lowStockItems: [],
+  setLowStockItems: (items) => set({ lowStockItems: items }),
+  
+  refreshLowStockItems: async () => {
+    try {
+      const items = await getLowStockItems();
+      set({ lowStockItems: items });
+    } catch (err) {
+      console.error('[Store] Failed to refresh low stock items:', err);
+    }
+  },
+  
+  isInventoryCategory: (categoryId) => 
+    get().inventoryCategories.some(ic => ic.categoryId === categoryId),
 
   // Stats
   getTodayStats: () => {

@@ -12,6 +12,12 @@ export {
   expensesApi,
   waiterCallsApi,
   transactionsApi,
+  // Inventory APIs
+  inventoryCategoriesApi,
+  inventoryItemsApi,
+  inventoryTransactionsApi,
+  portionOptionsApi,
+  getLowStockItems,
   checkBackendHealth,
   getApiBaseUrl,
 } from './supabaseApi';

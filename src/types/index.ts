@@ -150,3 +150,61 @@ export interface WaiterCall {
   createdAt: string;
   acknowledgedAt?: string;
 }
+
+// ===========================================
+// INVENTORY TYPES
+// ===========================================
+
+export type InventoryUnitType = 'ml' | 'pcs' | 'grams' | 'bottle' | 'pack';
+
+export interface InventoryCategory {
+  id: string;
+  categoryId: string;
+  unitType: InventoryUnitType;
+  defaultContainerSize?: number; // e.g., 750ml for a bottle
+  lowStockThreshold: number;
+  createdAt: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  menuItemId: string;
+  currentStock: number;
+  containerSize?: number;
+  unit: InventoryUnitType;
+  lowStockThreshold?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InventoryTransactionType = 'receive' | 'sale' | 'adjustment' | 'waste';
+
+export interface InventoryTransaction {
+  id: string;
+  inventoryItemId: string;
+  transactionType: InventoryTransactionType;
+  quantity: number;
+  unit: InventoryUnitType;
+  orderId?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface PortionOption {
+  id: string;
+  inventoryCategoryId: string;
+  name: string;
+  size: number;
+  priceMultiplier: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface LowStockItem {
+  inventoryItemId: string;
+  menuItemName: string;
+  currentStock: number;
+  threshold: number;
+  unit: InventoryUnitType;
+}

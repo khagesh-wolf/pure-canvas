@@ -13,7 +13,7 @@ import {
   UtensilsCrossed, Users, QrCode, History, TrendingUp, ShoppingBag, DollarSign,
   Download, Search, Eye, UserCog, BarChart3, Calendar, Image as ImageIcon, ToggleLeft, ToggleRight,
   Check, X, Menu as MenuIcon, MonitorDot, GripVertical, Upload, Loader2, Shield, Pencil,
-  Sun, Moon, ChefHat
+  Sun, Moon, ChefHat, Package
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { Textarea } from '@/components/ui/textarea';

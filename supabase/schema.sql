@@ -432,6 +432,182 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ===========================================
+-- INVENTORY SYSTEM
+-- ===========================================
+
+-- Inventory unit type enum
+CREATE TYPE inventory_unit_type AS ENUM ('ml', 'pcs', 'grams', 'bottle', 'pack');
+
+-- Inventory categories (categories that are tracked in inventory)
+CREATE TABLE IF NOT EXISTS inventory_categories (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  unit_type inventory_unit_type NOT NULL DEFAULT 'pcs',
+  -- For ml-based items: default bottle/container size
+  default_container_size DECIMAL(10,2) DEFAULT NULL,
+  -- Low stock warning threshold
+  low_stock_threshold DECIMAL(10,2) DEFAULT 5,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Inventory items (stock for menu items)
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id TEXT PRIMARY KEY,
+  menu_item_id TEXT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  -- Current stock level (in base units: ml, pcs, grams)
+  current_stock DECIMAL(10,2) NOT NULL DEFAULT 0,
+  -- Container size for this item (inherits from category or custom)
+  container_size DECIMAL(10,2) DEFAULT NULL,
+  -- Unit for display
+  unit inventory_unit_type NOT NULL DEFAULT 'pcs',
+  -- Low stock warning threshold (overrides category)
+  low_stock_threshold DECIMAL(10,2) DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(menu_item_id)
+);
+
+-- Inventory transactions (log of stock changes)
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+  id TEXT PRIMARY KEY,
+  inventory_item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+  -- Transaction type: 'receive' for adding stock, 'sale' for deducting
+  transaction_type TEXT NOT NULL CHECK (transaction_type IN ('receive', 'sale', 'adjustment', 'waste')),
+  -- Quantity changed (positive for receive, negative for sale)
+  quantity DECIMAL(10,2) NOT NULL,
+  -- Unit used in transaction
+  unit inventory_unit_type NOT NULL,
+  -- Reference to order (for sales)
+  order_id TEXT DEFAULT NULL,
+  -- Notes
+  notes TEXT DEFAULT '',
+  created_by TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Portion options for categories (fixed portions per category)
+CREATE TABLE IF NOT EXISTS portion_options (
+  id TEXT PRIMARY KEY,
+  inventory_category_id TEXT NOT NULL REFERENCES inventory_categories(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  -- Size in base units (ml, pcs, etc.)
+  size DECIMAL(10,2) NOT NULL,
+  -- Price multiplier (1.0 = base price, 2.0 = double price)
+  price_multiplier DECIMAL(5,2) NOT NULL DEFAULT 1.0,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for inventory tables
+CREATE INDEX IF NOT EXISTS idx_inventory_categories_category ON inventory_categories(category_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_menu_item ON inventory_items(menu_item_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_stock ON inventory_items(current_stock);
+CREATE INDEX IF NOT EXISTS idx_inventory_transactions_item ON inventory_transactions(inventory_item_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_transactions_type ON inventory_transactions(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_inventory_transactions_created ON inventory_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_portion_options_category ON portion_options(inventory_category_id);
+
+-- RLS for inventory tables
+ALTER TABLE inventory_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portion_options ENABLE ROW LEVEL SECURITY;
+
+-- Inventory Categories RLS
+CREATE POLICY "Public read inventory_categories" ON inventory_categories FOR SELECT USING (true);
+CREATE POLICY "Public insert inventory_categories" ON inventory_categories FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update inventory_categories" ON inventory_categories FOR UPDATE USING (true);
+CREATE POLICY "Public delete inventory_categories" ON inventory_categories FOR DELETE USING (true);
+
+-- Inventory Items RLS
+CREATE POLICY "Public read inventory_items" ON inventory_items FOR SELECT USING (true);
+CREATE POLICY "Public insert inventory_items" ON inventory_items FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update inventory_items" ON inventory_items FOR UPDATE USING (true);
+CREATE POLICY "Public delete inventory_items" ON inventory_items FOR DELETE USING (true);
+
+-- Inventory Transactions RLS
+CREATE POLICY "Public read inventory_transactions" ON inventory_transactions FOR SELECT USING (true);
+CREATE POLICY "Public insert inventory_transactions" ON inventory_transactions FOR INSERT WITH CHECK (true);
+
+-- Portion Options RLS
+CREATE POLICY "Public read portion_options" ON portion_options FOR SELECT USING (true);
+CREATE POLICY "Public insert portion_options" ON portion_options FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update portion_options" ON portion_options FOR UPDATE USING (true);
+CREATE POLICY "Public delete portion_options" ON portion_options FOR DELETE USING (true);
+
+-- Add inventory tables to realtime
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'inventory_items'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE inventory_items;
+  END IF;
+END $$;
+
+-- Function to deduct inventory on order acceptance
+CREATE OR REPLACE FUNCTION deduct_inventory(
+  p_menu_item_id TEXT,
+  p_quantity DECIMAL,
+  p_unit inventory_unit_type,
+  p_order_id TEXT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  inv_item RECORD;
+  deduct_amount DECIMAL;
+BEGIN
+  -- Get inventory item
+  SELECT * INTO inv_item FROM inventory_items WHERE menu_item_id = p_menu_item_id;
+  
+  IF inv_item IS NULL THEN
+    -- Item not tracked in inventory, return success
+    RETURN TRUE;
+  END IF;
+  
+  -- Calculate deduction amount based on unit conversion
+  deduct_amount := p_quantity;
+  
+  -- Update stock
+  UPDATE inventory_items 
+  SET current_stock = current_stock - deduct_amount,
+      updated_at = NOW()
+  WHERE id = inv_item.id;
+  
+  -- Log transaction
+  INSERT INTO inventory_transactions (id, inventory_item_id, transaction_type, quantity, unit, order_id)
+  VALUES (gen_random_uuid()::text, inv_item.id, 'sale', -deduct_amount, p_unit, p_order_id);
+  
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get low stock items
+CREATE OR REPLACE FUNCTION get_low_stock_items()
+RETURNS TABLE (
+  inventory_item_id TEXT,
+  menu_item_name TEXT,
+  current_stock DECIMAL,
+  threshold DECIMAL,
+  unit inventory_unit_type
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    ii.id,
+    mi.name,
+    ii.current_stock,
+    COALESCE(ii.low_stock_threshold, ic.low_stock_threshold, 5) as threshold,
+    ii.unit
+  FROM inventory_items ii
+  JOIN menu_items mi ON ii.menu_item_id = mi.id
+  LEFT JOIN inventory_categories ic ON mi.category = (SELECT c.name FROM categories c WHERE c.id = ic.category_id)
+  WHERE ii.current_stock <= COALESCE(ii.low_stock_threshold, ic.low_stock_threshold, 5);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ===========================================
 -- DEFAULT DATA
 -- ===========================================
 

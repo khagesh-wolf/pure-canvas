@@ -665,6 +665,245 @@ export const transactionsApi = {
   },
 };
 
+// ===========================================
+// INVENTORY API
+// ===========================================
+
+// Inventory Categories
+const mapInventoryCategoryFromDb = (row: any) => ({
+  id: row.id,
+  categoryId: row.category_id,
+  unitType: row.unit_type ?? 'pcs',
+  defaultContainerSize: row.default_container_size ? Number(row.default_container_size) : undefined,
+  lowStockThreshold: Number(row.low_stock_threshold ?? 5),
+  createdAt: row.created_at,
+});
+
+const mapInventoryCategoryToDb = (item: any) => ({
+  id: item.id,
+  category_id: item.categoryId,
+  unit_type: item.unitType ?? 'pcs',
+  default_container_size: item.defaultContainerSize ?? null,
+  low_stock_threshold: item.lowStockThreshold ?? 5,
+});
+
+export const inventoryCategoriesApi = {
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from('inventory_categories')
+      .select('*');
+    if (error) throw error;
+    return (data || []).map(mapInventoryCategoryFromDb);
+  },
+  create: async (item: any) => {
+    const { data, error } = await supabase
+      .from('inventory_categories')
+      .insert(mapInventoryCategoryToDb(item))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapInventoryCategoryFromDb(data);
+  },
+  update: async (id: string, item: any) => {
+    const { data, error } = await supabase
+      .from('inventory_categories')
+      .update(mapInventoryCategoryToDb(item))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapInventoryCategoryFromDb(data);
+  },
+  delete: async (id: string) => {
+    const { error } = await supabase
+      .from('inventory_categories')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// Inventory Items
+const mapInventoryItemFromDb = (row: any) => ({
+  id: row.id,
+  menuItemId: row.menu_item_id,
+  currentStock: Number(row.current_stock ?? 0),
+  containerSize: row.container_size ? Number(row.container_size) : undefined,
+  unit: row.unit ?? 'pcs',
+  lowStockThreshold: row.low_stock_threshold ? Number(row.low_stock_threshold) : undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapInventoryItemToDb = (item: any) => ({
+  id: item.id,
+  menu_item_id: item.menuItemId,
+  current_stock: item.currentStock ?? 0,
+  container_size: item.containerSize ?? null,
+  unit: item.unit ?? 'pcs',
+  low_stock_threshold: item.lowStockThreshold ?? null,
+});
+
+export const inventoryItemsApi = {
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*');
+    if (error) throw error;
+    return (data || []).map(mapInventoryItemFromDb);
+  },
+  create: async (item: any) => {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .insert(mapInventoryItemToDb(item))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapInventoryItemFromDb(data);
+  },
+  update: async (id: string, item: any) => {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .update(mapInventoryItemToDb(item))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapInventoryItemFromDb(data);
+  },
+  updateStock: async (id: string, newStock: number) => {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapInventoryItemFromDb(data);
+  },
+  delete: async (id: string) => {
+    const { error } = await supabase
+      .from('inventory_items')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// Inventory Transactions
+const mapInventoryTransactionFromDb = (row: any) => ({
+  id: row.id,
+  inventoryItemId: row.inventory_item_id,
+  transactionType: row.transaction_type,
+  quantity: Number(row.quantity),
+  unit: row.unit,
+  orderId: row.order_id,
+  notes: row.notes ?? '',
+  createdBy: row.created_by ?? '',
+  createdAt: row.created_at,
+});
+
+const mapInventoryTransactionToDb = (item: any) => ({
+  id: item.id,
+  inventory_item_id: item.inventoryItemId,
+  transaction_type: item.transactionType,
+  quantity: item.quantity,
+  unit: item.unit,
+  order_id: item.orderId ?? null,
+  notes: item.notes ?? '',
+  created_by: item.createdBy ?? '',
+});
+
+export const inventoryTransactionsApi = {
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapInventoryTransactionFromDb);
+  },
+  create: async (item: any) => {
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .insert(mapInventoryTransactionToDb(item))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapInventoryTransactionFromDb(data);
+  },
+};
+
+// Portion Options
+const mapPortionOptionFromDb = (row: any) => ({
+  id: row.id,
+  inventoryCategoryId: row.inventory_category_id,
+  name: row.name,
+  size: Number(row.size),
+  priceMultiplier: Number(row.price_multiplier ?? 1),
+  sortOrder: row.sort_order ?? 0,
+  createdAt: row.created_at,
+});
+
+const mapPortionOptionToDb = (item: any) => ({
+  id: item.id,
+  inventory_category_id: item.inventoryCategoryId,
+  name: item.name,
+  size: item.size,
+  price_multiplier: item.priceMultiplier ?? 1,
+  sort_order: item.sortOrder ?? 0,
+});
+
+export const portionOptionsApi = {
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from('portion_options')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(mapPortionOptionFromDb);
+  },
+  create: async (item: any) => {
+    const { data, error } = await supabase
+      .from('portion_options')
+      .insert(mapPortionOptionToDb(item))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapPortionOptionFromDb(data);
+  },
+  update: async (id: string, item: any) => {
+    const { data, error } = await supabase
+      .from('portion_options')
+      .update(mapPortionOptionToDb(item))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapPortionOptionFromDb(data);
+  },
+  delete: async (id: string) => {
+    const { error } = await supabase
+      .from('portion_options')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// Low Stock Items
+export const getLowStockItems = async () => {
+  const { data, error } = await supabase.rpc('get_low_stock_items');
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    inventoryItemId: row.inventory_item_id,
+    menuItemName: row.menu_item_name,
+    currentStock: Number(row.current_stock),
+    threshold: Number(row.threshold),
+    unit: row.unit,
+  }));
+};
+
 // Health check
 export const checkBackendHealth = async (): Promise<boolean> => {
   try {
