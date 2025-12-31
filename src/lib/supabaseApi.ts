@@ -11,6 +11,7 @@ const mapCategoryFromDb = (row: any) => ({
   name: row.name,
   sortOrder: row.sort_order ?? 0,
   prepTime: row.prep_time ?? 5,
+  parentId: row.parent_id ?? undefined,
 });
 
 const mapCategoryToDb = (cat: any) => ({
@@ -18,6 +19,7 @@ const mapCategoryToDb = (cat: any) => ({
   name: cat.name,
   sort_order: cat.sortOrder ?? 0,
   prep_time: cat.prepTime ?? 5,
+  parent_id: cat.parentId ?? null,
 });
 
 // Menu Items

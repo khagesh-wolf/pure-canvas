@@ -27,12 +27,13 @@ DROP TABLE IF EXISTS categories CASCADE;
 -- TABLES
 -- ===========================================
 
--- Categories table
+-- Categories table (supports parent-child hierarchy for subcategories)
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   sort_order INTEGER DEFAULT 0,
   prep_time INTEGER DEFAULT 5,
+  parent_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
