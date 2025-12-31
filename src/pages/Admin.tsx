@@ -116,10 +116,12 @@ export default function Admin() {
   // Dashboard date range states - use Nepal timezone
   const [dashboardDateFrom, setDashboardDateFrom] = useState(() => getNepalDateDaysAgo(30));
   const [dashboardDateTo, setDashboardDateTo] = useState(() => getNepalTodayString());
+  const [dashboardPreset, setDashboardPreset] = useState<'today' | '7days' | '30days' | 'custom'>('30days');
 
   // Analytics states (same as dashboard for consistency)
   const [analyticsDateFrom, setAnalyticsDateFrom] = useState(() => getNepalDateDaysAgo(30));
   const [analyticsDateTo, setAnalyticsDateTo] = useState(() => getNepalTodayString());
+  const [analyticsPreset, setAnalyticsPreset] = useState<'today' | '7days' | '30days' | 'custom'>('30days');
 
   // Backup states
   const [backupModalOpen, setBackupModalOpen] = useState(false);
@@ -814,55 +816,70 @@ export default function Admin() {
                 <Calendar className="w-4 h-4" />
                 <span className="font-medium">Date Range</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="date"
-                  value={dashboardDateFrom}
-                  onChange={e => setDashboardDateFrom(e.target.value)}
-                  className="w-full text-sm"
-                />
-                <Input
-                  type="date"
-                  value={dashboardDateTo}
-                  onChange={e => setDashboardDateTo(e.target.value)}
-                  className="w-full text-sm"
-                />
-              </div>
               <div className="flex flex-wrap gap-2">
                 <Button 
-                  variant="outline" 
+                  variant={dashboardPreset === 'today' ? 'default' : 'outline'}
                   size="sm"
                   className="flex-1 min-w-[80px] text-xs md:text-sm"
                   onClick={() => {
                     const today = getNepalTodayString();
                     setDashboardDateFrom(today);
                     setDashboardDateTo(today);
+                    setDashboardPreset('today');
                   }}
                 >
                   Today
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant={dashboardPreset === '7days' ? 'default' : 'outline'}
                   size="sm"
                   className="flex-1 min-w-[80px] text-xs md:text-sm"
                   onClick={() => {
                     setDashboardDateFrom(getNepalDateDaysAgo(7));
                     setDashboardDateTo(getNepalTodayString());
+                    setDashboardPreset('7days');
                   }}
                 >
                   7 Days
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant={dashboardPreset === '30days' ? 'default' : 'outline'}
                   size="sm"
                   className="flex-1 min-w-[80px] text-xs md:text-sm"
                   onClick={() => {
                     setDashboardDateFrom(getNepalDateDaysAgo(30));
                     setDashboardDateTo(getNepalTodayString());
+                    setDashboardPreset('30days');
                   }}
                 >
                   30 Days
                 </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">From</label>
+                  <Input
+                    type="date"
+                    value={dashboardDateFrom}
+                    onChange={e => {
+                      setDashboardDateFrom(e.target.value);
+                      setDashboardPreset('custom');
+                    }}
+                    className="w-full text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">To</label>
+                  <Input
+                    type="date"
+                    value={dashboardDateTo}
+                    onChange={e => {
+                      setDashboardDateTo(e.target.value);
+                      setDashboardPreset('custom');
+                    }}
+                    className="w-full text-sm"
+                  />
+                </div>
               </div>
             </div>
 
@@ -971,19 +988,70 @@ export default function Admin() {
                 <Calendar className="w-4 h-4" />
                 <span className="font-medium">Date Range</span>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={analyticsPreset === 'today' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 min-w-[80px] text-xs md:text-sm"
+                  onClick={() => {
+                    const today = getNepalTodayString();
+                    setAnalyticsDateFrom(today);
+                    setAnalyticsDateTo(today);
+                    setAnalyticsPreset('today');
+                  }}
+                >
+                  Today
+                </Button>
+                <Button 
+                  variant={analyticsPreset === '7days' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 min-w-[80px] text-xs md:text-sm"
+                  onClick={() => {
+                    setAnalyticsDateFrom(getNepalDateDaysAgo(7));
+                    setAnalyticsDateTo(getNepalTodayString());
+                    setAnalyticsPreset('7days');
+                  }}
+                >
+                  7 Days
+                </Button>
+                <Button 
+                  variant={analyticsPreset === '30days' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 min-w-[80px] text-xs md:text-sm"
+                  onClick={() => {
+                    setAnalyticsDateFrom(getNepalDateDaysAgo(30));
+                    setAnalyticsDateTo(getNepalTodayString());
+                    setAnalyticsPreset('30days');
+                  }}
+                >
+                  30 Days
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="date"
-                  value={analyticsDateFrom}
-                  onChange={e => setAnalyticsDateFrom(e.target.value)}
-                  className="w-full text-sm"
-                />
-                <Input
-                  type="date"
-                  value={analyticsDateTo}
-                  onChange={e => setAnalyticsDateTo(e.target.value)}
-                  className="w-full text-sm"
-                />
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">From</label>
+                  <Input
+                    type="date"
+                    value={analyticsDateFrom}
+                    onChange={e => {
+                      setAnalyticsDateFrom(e.target.value);
+                      setAnalyticsPreset('custom');
+                    }}
+                    className="w-full text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">To</label>
+                  <Input
+                    type="date"
+                    value={analyticsDateTo}
+                    onChange={e => {
+                      setAnalyticsDateTo(e.target.value);
+                      setAnalyticsPreset('custom');
+                    }}
+                    className="w-full text-sm"
+                  />
+                </div>
               </div>
             </div>
 
