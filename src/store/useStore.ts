@@ -425,23 +425,15 @@ export const useStore = create<StoreState>()((set, get) => ({
     
     // When order is accepted, deduct inventory for tracked items
     if (status === 'accepted' && order) {
-      console.log('[Inventory] Order accepted, checking items for inventory deduction:', order.items);
       order.items.forEach(item => {
-        console.log('[Inventory] Processing item:', item.name, 'menuItemId:', item.menuItemId);
         if (item.menuItemId) {
           const invItem = state.inventoryItems.find(i => i.menuItemId === item.menuItemId);
-          console.log('[Inventory] Found inventory item:', invItem);
           if (invItem) {
             // Calculate quantity to deduct based on portion size
             // If item has portionSize, use that; otherwise use qty for unit-based items
             const deductQty = item.portionSize ? (item.portionSize * item.qty) : item.qty;
-            console.log('[Inventory] Deducting stock:', deductQty, invItem.unit, 'from', item.name);
             get().deductStock(item.menuItemId, deductQty, invItem.unit, id);
-          } else {
-            console.log('[Inventory] No inventory tracking for this item');
           }
-        } else {
-          console.log('[Inventory] Item has no menuItemId');
         }
       });
     }

@@ -550,22 +550,25 @@ export default function TableOrder() {
     }
     
     // Create unique ID for cart item (includes portion if applicable)
-    const cartItemId = portion 
+    // This is used for cart grouping, but we keep the original item.id for inventory tracking
+    const cartItemKey = portion 
       ? `${item.id}-${portion.id}` 
       : item.id;
     
     const price = customPrice ?? item.price;
     const itemName = portion ? `${item.name} (${portion.name})` : item.name;
     
-    const existing = cart.find(c => c.menuItemId === cartItemId);
+    const existing = cart.find(c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name));
     if (existing) {
       setCart(cart.map(c =>
-        c.menuItemId === cartItemId ? { ...c, qty: c.qty + 1 } : c
+        (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name)) 
+          ? { ...c, qty: c.qty + 1 } 
+          : c
       ));
     } else {
       setCart([...cart, {
-        id: Math.random().toString(36).substring(2, 9),
-        menuItemId: cartItemId,
+        id: cartItemKey, // Use compound key for cart identification
+        menuItemId: item.id, // Keep original menu item ID for inventory tracking
         name: itemName,
         qty: 1,
         price: price,
@@ -581,34 +584,56 @@ export default function TableOrder() {
     setPortionSelectorItem(null);
   };
 
-  const updateQty = (menuItemId: string, delta: number) => {
+  // updateQty handles both:
+  // 1. Cart item ID (compound key like "item123-portion456") from cart modal
+  // 2. Menu item ID from menu buttons (only for non-portioned items - finds the cart item with matching menuItemId and no portion)
+  const updateQty = (itemId: string, delta: number) => {
     hapticQuantityChange();
+    
+    // First, try to find by cart item id directly
+    let cartItem = cart.find(c => c.id === itemId);
+    
+    // If not found, look for a non-portioned item by menuItemId
+    if (!cartItem) {
+      cartItem = cart.find(c => c.menuItemId === itemId && !c.portionName);
+    }
+    
+    if (!cartItem) return;
+    
+    const cartItemId = cartItem.id;
+    
     setCart(cart.map(c => {
-      if (c.menuItemId === menuItemId) {
+      if (c.id === cartItemId) {
         const newQty = c.qty + delta;
         return newQty > 0 ? { ...c, qty: newQty } : c;
       }
       return c;
-    }).filter(c => c.qty > 0 || cart.find(x => x.menuItemId === menuItemId)?.qty !== 1 || delta !== -1));
+    }).filter(c => c.qty > 0 || cart.find(x => x.id === cartItemId)?.qty !== 1 || delta !== -1));
     
     // Remove items with qty 0
     setCart(prev => prev.filter(c => {
-      const item = prev.find(x => x.menuItemId === menuItemId);
-      if (item && item.qty + delta <= 0 && c.menuItemId === menuItemId) {
+      const item = prev.find(x => x.id === cartItemId);
+      if (item && item.qty + delta <= 0 && c.id === cartItemId) {
         return false;
       }
       return true;
     }));
   };
 
-  const removeFromCart = (menuItemId: string) => {
+  // removeFromCart also handles both cart item ID and menu item ID
+  const removeFromCart = (itemId: string) => {
     hapticDeleteItem();
-    setCart(cart.filter(c => c.menuItemId !== menuItemId));
+    // First try by cart item id, then by menuItemId (non-portioned only)
+    const cartItem = cart.find(c => c.id === itemId) || cart.find(c => c.menuItemId === itemId && !c.portionName);
+    if (cartItem) {
+      setCart(cart.filter(c => c.id !== cartItem.id));
+    }
   };
 
 
   const getItemQty = (menuItemId: string) => {
-    return cart.find(c => c.menuItemId === menuItemId)?.qty || 0;
+    // Sum quantities for all cart items with this menuItemId (handles portions)
+    return cart.filter(c => c.menuItemId === menuItemId).reduce((sum, c) => sum + c.qty, 0);
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -1338,21 +1363,21 @@ export default function TableOrder() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-3">
                     <button 
-                      onClick={() => updateQty(item.menuItemId, -1)}
+                      onClick={() => updateQty(item.id, -1)}
                       className="w-8 h-8 rounded-full bg-muted font-bold flex items-center justify-center text-foreground hover:bg-muted/80"
                     >
                       -
                     </button>
                     <span className="font-medium w-4 text-center text-foreground">{item.qty}</span>
                     <button 
-                      onClick={() => updateQty(item.menuItemId, 1)}
+                      onClick={() => updateQty(item.id, 1)}
                       className="w-8 h-8 rounded-full bg-muted font-bold flex items-center justify-center text-foreground hover:bg-muted/80"
                     >
                       +
                     </button>
                   </div>
                   <button 
-                    onClick={() => removeFromCart(item.menuItemId)}
+                    onClick={() => removeFromCart(item.id)}
                     className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
                     aria-label="Remove item"
                   >
