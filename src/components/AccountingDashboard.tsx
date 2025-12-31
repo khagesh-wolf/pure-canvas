@@ -8,12 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   DollarSign, TrendingUp, TrendingDown, Wallet, Plus, Calendar,
   ArrowUpRight, ArrowDownRight, Receipt, Building2, Clock, CheckCircle2,
-  AlertCircle, PiggyBank, BarChart3, ShoppingBag
+  AlertCircle, PiggyBank, BarChart3, ShoppingBag, FileText, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalDateTime, getNepalTodayString, getNepalDateDaysAgo, getTransactionDateInNepal } from '@/lib/nepalTime';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ExpenseCategory } from '@/types';
+import { MonthlyReportGenerator } from './MonthlyReportGenerator';
 
 const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string; color: string }[] = [
   { value: 'ingredients', label: 'Ingredients', color: 'bg-success/10 text-success' },
@@ -47,6 +48,7 @@ export function AccountingDashboard({ currentUser }: AccountingDashboardProps) {
   // Modal states
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [cashDrawerModalOpen, setCashDrawerModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [closingBalance, setClosingBalance] = useState('');
   const [closingNotes, setClosingNotes] = useState('');
 
@@ -247,7 +249,10 @@ export function AccountingDashboard({ currentUser }: AccountingDashboardProps) {
           <h2 className="text-lg md:text-2xl font-bold">Accounting</h2>
           <p className="text-xs md:text-sm text-muted-foreground">{formatNepalDateTime(new Date())}</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button onClick={() => setReportModalOpen(true)} variant="outline" className="flex-1 sm:flex-none">
+            <FileText className="w-4 h-4 mr-2" /> Monthly Report
+          </Button>
           <Button onClick={() => setExpenseModalOpen(true)} className="gradient-primary flex-1 sm:flex-none">
             <Plus className="w-4 h-4 mr-2" /> Add Expense
           </Button>
@@ -694,6 +699,9 @@ export function AccountingDashboard({ currentUser }: AccountingDashboardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Monthly Report Generator */}
+      <MonthlyReportGenerator open={reportModalOpen} onOpenChange={setReportModalOpen} />
     </div>
   );
 }
