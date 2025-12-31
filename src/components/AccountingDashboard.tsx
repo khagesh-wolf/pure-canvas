@@ -350,7 +350,7 @@ export function AccountingDashboard({ currentUser }: AccountingDashboardProps) {
                   {dateTo ? format(parse(dateTo, 'yyyy-MM-dd', new Date()), 'PPP') : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-popover" align="start">
+              <PopoverContent className="w-auto p-0 bg-popover" align="end">
                 <CalendarComponent
                   mode="single"
                   selected={dateTo ? parse(dateTo, 'yyyy-MM-dd', new Date()) : undefined}
