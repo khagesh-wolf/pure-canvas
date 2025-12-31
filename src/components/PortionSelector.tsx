@@ -66,7 +66,7 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm mx-auto rounded-2xl p-0 overflow-hidden z-[100]">
+      <DialogContent className="max-w-sm mx-auto rounded-2xl p-0 overflow-hidden z-[2000]">
         <DialogHeader className="p-4 pb-2 border-b border-border">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold">{item.name}</DialogTitle>
