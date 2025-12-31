@@ -39,6 +39,15 @@ const DEFAULT_PORTIONS: Record<string, { name: string; size: number; multiplier:
 
 const DEFAULT_BOTTLE_SIZES = [180, 375, 750, 1000];
 
+// Default low stock thresholds by unit type
+const DEFAULT_THRESHOLDS: Record<InventoryUnitType, number> = {
+  ml: 500,      // 500ml threshold for liquids
+  pcs: 5,       // 5 pieces
+  grams: 200,   // 200 grams
+  bottle: 2,    // 2 bottles
+  pack: 2,      // 2 packs
+};
+
 export function InventoryManager() {
   const { 
     menuItems, inventoryItems, portionOptions, lowStockItems, inventoryTransactions,
@@ -65,7 +74,7 @@ export function InventoryManager() {
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<InventoryUnitType>('pcs');
-  const [lowStockThreshold, setLowStockThreshold] = useState('5');
+  const [lowStockThreshold, setLowStockThreshold] = useState(DEFAULT_THRESHOLDS.pcs.toString());
   const [defaultBottleSize, setDefaultBottleSize] = useState('750');
   
   const [stockMenuItemId, setStockMenuItemId] = useState('');
@@ -88,15 +97,25 @@ export function InventoryManager() {
   const [newPortionSize, setNewPortionSize] = useState('');
   const [newPortionPrice, setNewPortionPrice] = useState('');
 
-  // Menu items with inventory tracking
-  const inventoryMenuItems = menuItems.filter(m => 
-    inventoryItems.some(ii => ii.menuItemId === m.id)
-  );
+  // Menu items with inventory tracking - sorted by threshold (low to high)
+  const inventoryMenuItems = menuItems
+    .filter(m => inventoryItems.some(ii => ii.menuItemId === m.id))
+    .sort((a, b) => {
+      const invA = inventoryItems.find(ii => ii.menuItemId === a.id);
+      const invB = inventoryItems.find(ii => ii.menuItemId === b.id);
+      return (invA?.lowStockThreshold || 0) - (invB?.lowStockThreshold || 0);
+    });
 
   // Menu items not yet tracked
   const unTrackedMenuItems = menuItems.filter(m => 
     !inventoryItems.some(ii => ii.menuItemId === m.id)
   );
+
+  // Update threshold when unit changes
+  const handleUnitChange = (unit: InventoryUnitType) => {
+    setSelectedUnit(unit);
+    setLowStockThreshold(DEFAULT_THRESHOLDS[unit].toString());
+  };
 
   const handleAddInventoryItem = () => {
     if (!selectedMenuItem) {
@@ -138,7 +157,7 @@ export function InventoryManager() {
     setShowAddItemModal(false);
     setSelectedMenuItem('');
     setSelectedUnit('pcs');
-    setLowStockThreshold('5');
+    setLowStockThreshold(DEFAULT_THRESHOLDS.pcs.toString());
     setDefaultBottleSize('750');
   };
 
@@ -538,7 +557,7 @@ export function InventoryManager() {
             </div>
             <div>
               <label className="text-sm font-medium">Unit Type</label>
-              <Select value={selectedUnit} onValueChange={(v) => setSelectedUnit(v as InventoryUnitType)}>
+              <Select value={selectedUnit} onValueChange={(v) => handleUnitChange(v as InventoryUnitType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {UNIT_OPTIONS.map(u => (
@@ -561,8 +580,11 @@ export function InventoryManager() {
               </div>
             )}
             <div>
-              <label className="text-sm font-medium">Low Stock Threshold</label>
+              <label className="text-sm font-medium">Low Stock Threshold ({selectedUnit})</label>
               <Input type="number" value={lowStockThreshold} onChange={e => setLowStockThreshold(e.target.value)} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Default: {DEFAULT_THRESHOLDS[selectedUnit]} {selectedUnit}
+              </p>
             </div>
           </div>
           <DialogFooter>
