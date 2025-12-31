@@ -903,6 +903,29 @@ export const portionOptionsApi = {
   },
   create: async (item: any) => {
     const dbItem = mapPortionOptionToDb(item);
+    
+    // Verify the inventory_category exists before inserting
+    const { data: categoryExists } = await supabase
+      .from('inventory_categories')
+      .select('id')
+      .eq('id', dbItem.inventory_category_id)
+      .single();
+    
+    if (!categoryExists) {
+      console.warn('inventory_category not found for portion option, skipping:', dbItem.inventory_category_id);
+      // Return the item as-is without database insertion
+      return {
+        id: dbItem.id,
+        inventoryItemId: dbItem.inventory_category_id,
+        name: dbItem.name,
+        size: dbItem.size,
+        priceMultiplier: dbItem.price_multiplier,
+        fixedPrice: dbItem.fixed_price,
+        sortOrder: dbItem.sort_order,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    
     // Use upsert to handle potential duplicates gracefully
     const { data, error } = await supabase
       .from('portion_options')

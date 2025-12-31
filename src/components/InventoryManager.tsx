@@ -117,7 +117,7 @@ export function InventoryManager() {
     setLowStockThreshold(DEFAULT_THRESHOLDS[unit].toString());
   };
 
-  const handleAddInventoryItem = () => {
+  const handleAddInventoryItem = async () => {
     if (!selectedMenuItem) {
       toast.error('Select a menu item');
       return;
@@ -126,7 +126,7 @@ export function InventoryManager() {
     const item = menuItems.find(m => m.id === selectedMenuItem);
     if (!item) return;
 
-    // Create the inventory item
+    // Create the inventory item (this also creates inventory_category in backend)
     addInventoryItem({
       menuItemId: selectedMenuItem,
       currentStock: 0,
@@ -135,13 +135,16 @@ export function InventoryManager() {
       lowStockThreshold: parseFloat(lowStockThreshold),
     });
 
-    // Get the newly created inventory item
-    setTimeout(() => {
+    // Wait for the inventory item to be created, then add portions with delays to avoid conflicts
+    setTimeout(async () => {
       const newInvItem = useStore.getState().inventoryItems.find(ii => ii.menuItemId === selectedMenuItem);
       if (newInvItem) {
-        // Add default portions for this item
+        // Add default portions for this item - add them sequentially with delays to avoid conflicts
         const defaultPortions = DEFAULT_PORTIONS[selectedUnit] || DEFAULT_PORTIONS.pcs;
-        defaultPortions.forEach((p, i) => {
+        for (let i = 0; i < defaultPortions.length; i++) {
+          const p = defaultPortions[i];
+          // Small delay between each portion to ensure no race conditions
+          await new Promise(resolve => setTimeout(resolve, 50));
           addPortionOption({
             inventoryItemId: newInvItem.id,
             name: p.name,
@@ -149,9 +152,9 @@ export function InventoryManager() {
             priceMultiplier: p.multiplier,
             sortOrder: i,
           });
-        });
+        }
       }
-    }, 100);
+    }, 500); // Increased delay to ensure inventory_category is created first
 
     toast.success(`${item.name} added to inventory tracking`);
     setShowAddItemModal(false);
