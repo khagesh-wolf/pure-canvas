@@ -123,6 +123,11 @@ export default function Counter() {
   const [manualDiscountType, setManualDiscountType] = useState<'percent' | 'amount'>('amount');
   const [manualDiscountValue, setManualDiscountValue] = useState('');
   
+  // Split payment states
+  const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
+  const [cashAmount, setCashAmount] = useState('');
+  const [fonepayAmount, setFonepayAmount] = useState('');
+  
   // Expense states
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [newExpense, setNewExpense] = useState({ amount: '', description: '', category: 'other' as Expense['category'] });
@@ -411,8 +416,10 @@ export default function Counter() {
     
     const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.total, 0);
     const todayExpenseTotal = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const cashPayments = todayTransactions.filter(t => t.paymentMethod === 'cash').reduce((sum, t) => sum + t.total, 0);
-    const fonepayPayments = todayTransactions.filter(t => t.paymentMethod === 'fonepay').reduce((sum, t) => sum + t.total, 0);
+    const cashPayments = todayTransactions.filter(t => t.paymentMethod === 'cash').reduce((sum, t) => sum + t.total, 0)
+      + todayTransactions.filter(t => t.paymentMethod === 'split' && t.splitDetails).reduce((sum, t) => sum + (t.splitDetails?.cashAmount || 0), 0);
+    const fonepayPayments = todayTransactions.filter(t => t.paymentMethod === 'fonepay').reduce((sum, t) => sum + t.total, 0)
+      + todayTransactions.filter(t => t.paymentMethod === 'split' && t.splitDetails).reduce((sum, t) => sum + (t.splitDetails?.fonepayAmount || 0), 0);
     
     return { todayRevenue, todayExpenseTotal, cashPayments, fonepayPayments };
   }, [transactions, expenses]);
@@ -514,13 +521,35 @@ export default function Counter() {
     setRedeemPoints(false);
     setManualDiscountValue('');
     setManualDiscountType('amount');
+    setSplitPaymentEnabled(false);
+    setCashAmount('');
+    setFonepayAmount('');
     setPaymentModalOpen(true);
   };
 
-  const processPayment = (method: 'cash' | 'fonepay') => {
+  const processPayment = (method: 'cash' | 'fonepay' | 'split') => {
     if (method === 'fonepay') {
       setPaymentModalOpen(false);
       setFonepayModalOpen(true);
+      return;
+    }
+
+    if (method === 'split') {
+      const cashAmt = parseFloat(cashAmount) || 0;
+      const fonepayAmt = parseFloat(fonepayAmount) || 0;
+      
+      if (cashAmt + fonepayAmt !== paymentTotal) {
+        toast.error(`Split amounts must equal रू${paymentTotal}`);
+        return;
+      }
+      
+      if (cashAmt <= 0 || fonepayAmt <= 0) {
+        toast.error('Both cash and fonepay amounts must be greater than 0');
+        return;
+      }
+      
+      if (!confirm(`Confirm SPLIT payment: Cash रू${cashAmt} + Fonepay रू${fonepayAmt}?`)) return;
+      executePayment('split', { cashAmount: cashAmt, fonepayAmount: fonepayAmt });
       return;
     }
 
@@ -528,7 +557,7 @@ export default function Counter() {
     executePayment(method);
   };
 
-  const executePayment = (method: 'cash' | 'fonepay') => {
+  const executePayment = (method: 'cash' | 'fonepay' | 'split', splitDetails?: { cashAmount: number; fonepayAmount: number }) => {
     // Get order IDs from selected groups
     const orderIds = acceptedOrders
       .filter(o => selectedPhones.includes(o.customerPhone))
@@ -541,17 +570,21 @@ export default function Counter() {
 
     const tableNumber = selectedGroups[0]?.tableNumber || 0;
     const bill = createBill(tableNumber, orderIds, discountAmount);
-    payBill(bill.id, method);
+    
+    // For split payments, use 'split' as the payment method and pass splitDetails
+    payBill(bill.id, method, splitDetails);
 
     // Close customer sessions for all phones that paid
-    // This prevents reuse of old URLs from browser history
     closeTableSession(tableNumber, selectedPhones);
     
     // Record payment blocks (3-hour cooldown)
-    // This prevents ordering from old QR codes after payment
     recordPaymentBlocksForPhones(tableNumber, selectedPhones);
 
     // Store last paid data for printing
+    const methodDisplay = method === 'split' && splitDetails 
+      ? `Cash रू${splitDetails.cashAmount} + Fonepay रू${splitDetails.fonepayAmount}` 
+      : method.toUpperCase();
+      
     setLastPaidData({
       date: formatNepalDateTime(new Date()),
       table: tableNumber,
@@ -559,23 +592,33 @@ export default function Counter() {
       items: selectedGroups.flatMap(g => g.items),
       total: paymentTotal,
       discount: discountAmount,
-      method
+      method: methodDisplay,
+      splitDetails
     });
 
     setPaymentModalOpen(false);
     setFonepayModalOpen(false);
     setSuccessModalOpen(true);
     setSelectedPhones([]);
-    toast.success(`Payment completed via ${method}`);
+    
+    if (method === 'split' && splitDetails) {
+      toast.success(`Split payment completed: Cash रू${splitDetails.cashAmount} + Fonepay रू${splitDetails.fonepayAmount}`);
+    } else {
+      toast.success(`Payment completed via ${method}`);
+    }
   };
 
   const printReceipt = (data: any) => {
+    const methodDisplay = data.splitDetails 
+      ? `SPLIT: Cash रू${data.splitDetails.cashAmount} + Fonepay रू${data.splitDetails.fonepayAmount}`
+      : (typeof data.method === 'string' && data.method.includes('Cash रू') ? data.method : data.method?.toUpperCase?.() || 'CASH');
+      
     const printContent = `
       <div style="font-family: monospace; width: 300px; padding: 10px;">
         <div style="text-align: center; border-bottom: 1px dashed black; padding-bottom: 10px; margin-bottom: 10px;">
           <h2 style="margin: 0;">${settings.restaurantName.toUpperCase()}</h2>
           <div>${data.date}</div>
-          <div>Table: ${data.table} | ${data.method.toUpperCase()}</div>
+          <div>Table: ${data.table}</div>
           <div>Customer: ${data.phones}</div>
         </div>
         ${data.items.map((i: any) => `
@@ -594,6 +637,9 @@ export default function Counter() {
         <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; margin-top: 10px;">
           <span>TOTAL</span>
           <span>रू${data.total}</span>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.9rem; background: #f0f0f0; padding: 5px; border-radius: 4px;">
+          ${methodDisplay}
         </div>
         <div style="text-align: center; font-size: 0.8rem; margin-top: 20px;">Thank You!</div>
       </div>
@@ -625,7 +671,8 @@ export default function Counter() {
       items: itemsWithTotal,
       total: t.total,
       discount: t.discount,
-      method: t.paymentMethod
+      method: t.paymentMethod,
+      splitDetails: t.splitDetails
     });
     setDetailModalOpen(true);
   };
@@ -1218,7 +1265,11 @@ export default function Counter() {
                             <td className="p-3 md:p-4 text-sm text-foreground">Table {t.tableNumber}</td>
                             <td className="p-3 md:p-4 text-sm text-foreground">{t.customerPhones.join(', ') || 'Guest'}</td>
                             <td className="p-3 md:p-4 font-bold text-sm text-foreground">रू{t.total}</td>
-                            <td className="p-3 md:p-4 text-sm text-foreground">{t.paymentMethod.toUpperCase()}</td>
+                            <td className="p-3 md:p-4 text-sm text-foreground">
+                              {t.paymentMethod === 'split' && t.splitDetails 
+                                ? <span className="text-xs">Cash {t.splitDetails.cashAmount} + Fonepay {t.splitDetails.fonepayAmount}</span>
+                                : t.paymentMethod.toUpperCase()}
+                            </td>
                           </tr>
                         ))
                       )}
@@ -1387,26 +1438,114 @@ export default function Counter() {
             </div>
           )}
 
-          <div className="flex justify-between text-xl font-bold mb-6">
+          <div className="flex justify-between text-xl font-bold mb-4">
             <span>Total Pay:</span>
             <span>रू{paymentTotal}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button 
-              variant="outline" 
-              className="border-2 border-foreground text-foreground font-bold py-6"
-              onClick={() => processPayment('cash')}
-            >
-              CASH
-            </Button>
-            <Button 
-              className="bg-[#c32148] hover:bg-[#c32148]/90 text-white py-6 font-bold"
-              onClick={() => processPayment('fonepay')}
-            >
-              FONEPAY
-            </Button>
+          {/* Split Payment Toggle */}
+          <div className="border border-border p-3 rounded-lg mb-4">
+            <label className="flex justify-between items-center cursor-pointer">
+              <span className="text-foreground font-medium">Split Payment (Cash + Fonepay)</span>
+              <input 
+                type="checkbox" 
+                checked={splitPaymentEnabled}
+                onChange={(e) => {
+                  setSplitPaymentEnabled(e.target.checked);
+                  if (e.target.checked) {
+                    // Default to 50/50 split
+                    const half = Math.floor(paymentTotal / 2);
+                    setCashAmount(half.toString());
+                    setFonepayAmount((paymentTotal - half).toString());
+                  } else {
+                    setCashAmount('');
+                    setFonepayAmount('');
+                  }
+                }}
+                className="w-5 h-5 accent-primary"
+              />
+            </label>
           </div>
+
+          {/* Split Payment Inputs */}
+          {splitPaymentEnabled && (
+            <div className="border border-primary/30 bg-primary/5 p-4 rounded-lg mb-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <label className="w-24 text-sm font-medium text-foreground">Cash:</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={cashAmount}
+                  onChange={(e) => {
+                    const cash = parseFloat(e.target.value) || 0;
+                    setCashAmount(e.target.value);
+                    setFonepayAmount(Math.max(0, paymentTotal - cash).toString());
+                  }}
+                  className="flex-1"
+                  min="0"
+                  max={paymentTotal}
+                />
+                <span className="text-sm text-muted-foreground">रू</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="w-24 text-sm font-medium text-foreground">Fonepay:</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={fonepayAmount}
+                  onChange={(e) => {
+                    const fonepay = parseFloat(e.target.value) || 0;
+                    setFonepayAmount(e.target.value);
+                    setCashAmount(Math.max(0, paymentTotal - fonepay).toString());
+                  }}
+                  className="flex-1"
+                  min="0"
+                  max={paymentTotal}
+                />
+                <span className="text-sm text-muted-foreground">रू</span>
+              </div>
+              {/* Split total validation */}
+              {(() => {
+                const total = (parseFloat(cashAmount) || 0) + (parseFloat(fonepayAmount) || 0);
+                const diff = total - paymentTotal;
+                if (diff !== 0) {
+                  return (
+                    <div className={`text-sm ${diff > 0 ? 'text-destructive' : 'text-warning'}`}>
+                      {diff > 0 ? `Over by रू${diff}` : `Short by रू${Math.abs(diff)}`}
+                    </div>
+                  );
+                }
+                return <div className="text-sm text-success">✓ Amounts match total</div>;
+              })()}
+            </div>
+          )}
+
+          {/* Payment Buttons */}
+          {splitPaymentEnabled ? (
+            <Button 
+              className="w-full bg-gradient-to-r from-foreground to-[#c32148] hover:opacity-90 text-white py-6 font-bold"
+              onClick={() => processPayment('split')}
+              disabled={(parseFloat(cashAmount) || 0) + (parseFloat(fonepayAmount) || 0) !== paymentTotal}
+            >
+              PAY SPLIT (Cash रू{cashAmount || 0} + Fonepay रू{fonepayAmount || 0})
+            </Button>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant="outline" 
+                className="border-2 border-foreground text-foreground font-bold py-6"
+                onClick={() => processPayment('cash')}
+              >
+                CASH
+              </Button>
+              <Button 
+                className="bg-[#c32148] hover:bg-[#c32148]/90 text-white py-6 font-bold"
+                onClick={() => processPayment('fonepay')}
+              >
+                FONEPAY
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

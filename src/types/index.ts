@@ -47,6 +47,8 @@ export interface Order {
 
 export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled';
 
+export type PaymentMethod = 'cash' | 'fonepay' | 'split';
+
 export interface Bill {
   id: string;
   tableNumber: number;
@@ -56,9 +58,13 @@ export interface Bill {
   discount: number;
   total: number;
   status: 'unpaid' | 'paid';
-  paymentMethod?: 'cash' | 'fonepay';
+  paymentMethod?: PaymentMethod;
   paidAt?: string;
   createdAt: string;
+  splitDetails?: {
+    cashAmount: number;
+    fonepayAmount: number;
+  };
 }
 
 export interface Transaction {
@@ -68,9 +74,13 @@ export interface Transaction {
   customerPhones: string[];
   total: number;
   discount: number;
-  paymentMethod: 'cash' | 'fonepay';
+  paymentMethod: PaymentMethod;
   paidAt: string;
   items: OrderItem[];
+  splitDetails?: {
+    cashAmount: number;
+    fonepayAmount: number;
+  };
 }
 
 export interface Customer {

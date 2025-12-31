@@ -127,7 +127,7 @@ interface StoreState extends AuthState {
   bills: Bill[];
   setBills: (bills: Bill[]) => void;
   createBill: (tableNumber: number, orderIds: string[], discount?: number) => Bill;
-  payBill: (billId: string, paymentMethod: 'cash' | 'fonepay') => void;
+  payBill: (billId: string, paymentMethod: 'cash' | 'fonepay' | 'split', splitDetails?: { cashAmount: number; fonepayAmount: number }) => void;
   redeemPoints: (phone: string, points: number) => void;
   getUnpaidOrdersByTable: (tableNumber: number) => Order[];
 
@@ -528,7 +528,7 @@ export const useStore = create<StoreState>()((set, get) => ({
     return bill;
   },
 
-  payBill: (billId, paymentMethod) => {
+  payBill: (billId, paymentMethod, splitDetails) => {
     const bill = get().bills.find(b => b.id === billId);
     if (!bill) return;
 
@@ -544,6 +544,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       paymentMethod,
       paidAt,
       items: bill.orders.flatMap(o => o.items),
+      splitDetails,
     };
 
     // Get order IDs that need to be marked as served
@@ -551,7 +552,7 @@ export const useStore = create<StoreState>()((set, get) => ({
 
     set((state) => ({
       bills: state.bills.map(b =>
-        b.id === billId ? { ...b, status: 'paid' as const, paymentMethod, paidAt } : b
+        b.id === billId ? { ...b, status: 'paid' as const, paymentMethod, paidAt, splitDetails } : b
       ),
       orders: state.orders.map(o =>
         bill.orders.some(bo => bo.id === o.id) ? { ...o, status: 'served' as OrderStatus } : o
