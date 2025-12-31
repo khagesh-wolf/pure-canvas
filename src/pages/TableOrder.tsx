@@ -447,10 +447,18 @@ export default function TableOrder() {
     checkBlock();
   }, [isPhoneEntered, phone, table]);
 
-  // Build category list: only show Favorites if there are favorites
+  // Build category list: only show main categories (no parent) and Favorites
+  const mainCategories = categories.filter(c => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
   const categoryNames = favorites.length > 0 
-    ? ['Favorites', ...categories.map(c => c.name)]
-    : categories.map(c => c.name);
+    ? ['Favorites', ...mainCategories.map(c => c.name)]
+    : mainCategories.map(c => c.name);
+  
+  // State for active subcategory within a main category
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null);
+  
+  // Get subcategories for a main category
+  const getSubcategories = (mainCategoryId: string) => 
+    categories.filter(c => c.parentId === mainCategoryId).sort((a, b) => a.sortOrder - b.sortOrder);
   
   // Set initial category to first real category (not Favorites)
   useEffect(() => {
@@ -708,6 +716,7 @@ export default function TableOrder() {
 
   const scrollToCategory = (cat: string) => {
     setActiveCategory(cat);
+    setActiveSubcategory(null); // Reset subcategory when switching main category
     setIsScrolling(true);
     
     // Clear any existing timeout
@@ -1169,91 +1178,171 @@ export default function TableOrder() {
         )}
 
         {/* Regular Categories */}
-        {categoryNames.filter(c => c !== 'Favorites').map(cat => {
+        {categoryNames.filter(c => c !== 'Favorites').map(catName => {
           if (activeCategory === 'Favorites') return null;
-          const items = menuItems.filter(item => item.category === cat);
-          if (items.length === 0) return null;
           
-          return (
-            <div key={cat} id={`cat-${cat}`}>
-              <h2 className="text-2xl font-bold mb-5">{cat}</h2>
-              {items.map(item => {
-                const qty = getItemQty(item.id);
-                const isFav = isFavorite(item.id);
-                return (
-                  <div key={item.id} className={`flex justify-between border-b border-border pb-4 mb-5 ${!item.available ? 'opacity-60' : ''}`}>
-                    <div className="flex-1 pr-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
-                        {getItemBadge(item.id) && <MenuItemBadge type={getItemBadge(item.id)!} />}
+          // Find the main category
+          const mainCat = mainCategories.find(c => c.name === catName);
+          if (!mainCat) return null;
+          
+          // Get subcategories for this main category
+          const subcats = getSubcategories(mainCat.id);
+          
+          // Items directly under main category (not in any subcategory)
+          const directItems = menuItems.filter(item => item.category === catName);
+          
+          // Items under subcategories
+          const subcatItems = subcats.flatMap(sc => 
+            menuItems.filter(item => item.category === sc.name)
+          );
+          
+          // All items for this main category (direct + subcategory)
+          const allItems = [...directItems, ...subcatItems];
+          if (allItems.length === 0) return null;
+          
+          // Render menu item helper
+          const renderMenuItem = (item: typeof menuItems[0]) => {
+            const qty = getItemQty(item.id);
+            const isFav = isFavorite(item.id);
+            return (
+              <div key={item.id} className={`flex justify-between border-b border-border pb-4 mb-5 ${!item.available ? 'opacity-60' : ''}`}>
+                <div className="flex-1 pr-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
+                    {getItemBadge(item.id) && <MenuItemBadge type={getItemBadge(item.id)!} />}
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        hapticFavorite(); 
+                        const btn = e.currentTarget;
+                        btn.classList.remove('heart-animate');
+                        void btn.offsetWidth;
+                        btn.classList.add('heart-animate');
+                        toggleFavorite(item.id); 
+                      }}
+                      className={isFav ? 'text-[#e74c3c]' : 'text-[#ccc]'}
+                    >
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                    </button>
+                  </div>
+                  <p className="font-medium text-foreground">रू{item.price}</p>
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                  )}
+                  
+                  {/* Inline Quantity Control or Unavailable */}
+                  <div className="mt-3">
+                    {!item.available ? (
+                      <span className="inline-block bg-muted text-muted-foreground font-medium px-4 py-1.5 rounded-full text-sm">
+                        Unavailable
+                      </span>
+                    ) : qty === 0 ? (
+                      <button
+                        onClick={() => addToCart(item)}
+                        className={`bg-card border border-border text-primary font-bold px-5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow ${lastAddedItemId === item.id ? 'cart-bounce' : ''}`}
+                      >
+                        ADD
+                      </button>
+                    ) : (
+                      <div className="inline-flex items-center bg-card border border-border rounded-full overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
                         <button
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            hapticFavorite(); 
-                            const btn = e.currentTarget;
-                            btn.classList.remove('heart-animate');
-                            void btn.offsetWidth;
-                            btn.classList.add('heart-animate');
-                            toggleFavorite(item.id); 
-                          }}
-                          className={isFav ? 'text-[#e74c3c]' : 'text-[#ccc]'}
+                          onClick={() => updateQty(item.id, -1)}
+                          className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
                         >
-                          <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                          −
+                        </button>
+                        <span className="font-bold text-sm w-6 text-center text-foreground">{qty}</span>
+                        <button
+                          onClick={() => updateQty(item.id, 1)}
+                          className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
+                        >
+                          +
                         </button>
                       </div>
-                      <p className="font-medium text-foreground">रू{item.price}</p>
-                      {item.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-                      )}
-                      
-                      {/* Inline Quantity Control or Unavailable */}
-                      <div className="mt-3">
-                        {!item.available ? (
-                          <span className="inline-block bg-muted text-muted-foreground font-medium px-4 py-1.5 rounded-full text-sm">
-                            Unavailable
-                          </span>
-                        ) : qty === 0 ? (
-                          <button
-                            onClick={() => addToCart(item)}
-                            className={`bg-card border border-border text-primary font-bold px-5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow ${lastAddedItemId === item.id ? 'cart-bounce' : ''}`}
-                          >
-                            ADD
-                          </button>
-                        ) : (
-                          <div className="inline-flex items-center bg-card border border-border rounded-full overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
-                            <button
-                              onClick={() => updateQty(item.id, -1)}
-                              className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
-                            >
-                              −
-                            </button>
-                            <span className="font-bold text-sm w-6 text-center text-foreground">{qty}</span>
-                            <button
-                              onClick={() => updateQty(item.id, 1)}
-                              className="w-9 h-8 flex items-center justify-center text-primary text-xl active:bg-muted"
-                            >
-                              +
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className={`w-[100px] h-[100px] rounded-xl bg-muted overflow-hidden flex-shrink-0 ${!item.available ? 'grayscale' : ''}`}>
-                      {item.image ? (
-                        <img 
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-muted/50">
-                          <span className="text-xs text-muted-foreground font-medium">No Image</span>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+                <div className={`w-[100px] h-[100px] rounded-xl bg-muted overflow-hidden flex-shrink-0 ${!item.available ? 'grayscale' : ''}`}>
+                  {item.image ? (
+                    <img 
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted/50">
+                      <span className="text-xs text-muted-foreground font-medium">No Image</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          };
+          
+          return (
+            <div key={catName} id={`cat-${catName}`}>
+              <h2 className="text-2xl font-bold mb-3">{catName}</h2>
+              
+              {/* Subcategory pills (if any) */}
+              {subcats.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto mb-4 pb-2 scrollbar-hide">
+                  <button
+                    onClick={() => setActiveSubcategory(null)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                      activeSubcategory === null && activeCategory === catName
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {subcats.map(subcat => (
+                    <button
+                      key={subcat.id}
+                      onClick={() => setActiveSubcategory(subcat.name)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                        activeSubcategory === subcat.name && activeCategory === catName
+                          ? 'bg-primary/20 text-primary border border-primary/30'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {subcat.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Items display based on subcategory selection */}
+              {subcats.length === 0 ? (
+                // No subcategories - show all direct items
+                directItems.map(renderMenuItem)
+              ) : activeSubcategory === null ? (
+                // "All" selected - show all items organized by subcategory
+                <>
+                  {/* Direct items first */}
+                  {directItems.length > 0 && directItems.map(renderMenuItem)}
+                  
+                  {/* Then each subcategory */}
+                  {subcats.map(subcat => {
+                    const subItems = menuItems.filter(item => item.category === subcat.name);
+                    if (subItems.length === 0) return null;
+                    return (
+                      <div key={subcat.id} className="mt-4">
+                        <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                          {subcat.name}
+                        </h3>
+                        {subItems.map(renderMenuItem)}
+                      </div>
+                    );
+                  })}
+                </>
+              ) : (
+                // Specific subcategory selected
+                menuItems
+                  .filter(item => item.category === activeSubcategory)
+                  .map(renderMenuItem)
+              )}
             </div>
           );
         })}
