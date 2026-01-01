@@ -64,10 +64,29 @@ DROP FUNCTION IF EXISTS immutable_date(TIMESTAMPTZ) CASCADE;
 -- ===========================================
 
 -- Immutable date extraction function (fixes "generation expression is not immutable" error)
+-- IMPORTANT: Use plpgsql to prevent inlining during generated-column immutability checks.
 CREATE OR REPLACE FUNCTION immutable_date(ts TIMESTAMPTZ)
-RETURNS DATE AS $$
-  SELECT (ts AT TIME ZONE 'UTC')::DATE;
-$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
+RETURNS DATE
+LANGUAGE plpgsql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+BEGIN
+  RETURN (ts AT TIME ZONE 'UTC')::DATE;
+END;
+$$;
+
+-- Immutable timestamptz + interval helper for generated columns
+CREATE OR REPLACE FUNCTION immutable_add_interval(ts TIMESTAMPTZ, i INTERVAL)
+RETURNS TIMESTAMPTZ
+LANGUAGE plpgsql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+BEGIN
+  RETURN ts + i;
+END;
+$$;
 
 -- ===========================================
 -- CUSTOM TYPES (Enums for performance)
@@ -244,8 +263,8 @@ CREATE TABLE payment_blocks (
   paid_at TIMESTAMPTZ DEFAULT NOW(),
   staff_override BOOLEAN DEFAULT FALSE,
   override_at TIMESTAMPTZ,
-  -- Auto-expire after 24 hours (uses immutable interval addition)
-  expires_at TIMESTAMPTZ GENERATED ALWAYS AS (paid_at + INTERVAL '24 hours') STORED
+  -- Auto-expire after 24 hours (generated columns require immutable expressions)
+  expires_at TIMESTAMPTZ GENERATED ALWAYS AS (immutable_add_interval(paid_at, INTERVAL '24 hours')) STORED
 );
 
 -- ===========================================
