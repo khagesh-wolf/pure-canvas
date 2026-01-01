@@ -224,6 +224,7 @@ CREATE TABLE settings (
   kds_enabled BOOLEAN DEFAULT false,
   kot_printing_enabled BOOLEAN DEFAULT false,
   kitchen_fullscreen_mode BOOLEAN DEFAULT false,
+  accepted_order_cancel_admin_only BOOLEAN DEFAULT false,
   points_per_rupee NUMERIC(5,3) DEFAULT 0.1,
   point_value_in_rupees NUMERIC(5,2) DEFAULT 1,
   max_discount_rupees NUMERIC(8,2) DEFAULT 500,
