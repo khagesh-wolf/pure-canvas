@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { 
   LogOut, ChefHat, ShoppingCart, Plus, Minus, Search, 
   CheckCircle, Clock, Utensils, Bell, Table2, Send, 
-  ArrowLeft, Trash2, AlertCircle, Sun, Moon, RefreshCw, X, Printer
+  ArrowLeft, Trash2, AlertCircle, Sun, Moon, RefreshCw, X, Printer, Timer, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNepalTime, formatNepalDateTime } from '@/lib/nepalTime';
@@ -825,6 +825,13 @@ export default function Waiter() {
             <div className="space-y-4">
               {waiterOrders.map(order => {
                 const isWaiterOwned = order.createdBy === currentUser?.id;
+                const orderTime = new Date(order.createdAt).getTime();
+                const now = Date.now();
+                const elapsedMinutes = Math.floor((now - orderTime) / 60000);
+                const elapsedSeconds = Math.floor(((now - orderTime) % 60000) / 1000);
+                const canCancel = order.status === 'pending';
+                const canServe = ['accepted', 'preparing', 'ready'].includes(order.status);
+                
                 return (
                   <div 
                     key={order.id} 
@@ -863,6 +870,23 @@ export default function Waiter() {
                       </div>
                       <StatusBadge status={order.status} />
                     </div>
+
+                    {/* Timer Card */}
+                    <div className="px-4 pb-2">
+                      <div className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg ${
+                        elapsedMinutes >= 15 
+                          ? 'bg-destructive/15 text-destructive' 
+                          : elapsedMinutes >= 10 
+                            ? 'bg-warning/15 text-warning' 
+                            : 'bg-muted text-muted-foreground'
+                      }`}>
+                        <Timer className="w-4 h-4" />
+                        <span className="font-mono font-medium">
+                          {elapsedMinutes}:{elapsedSeconds.toString().padStart(2, '0')}
+                        </span>
+                        <span className="text-xs opacity-75">elapsed</span>
+                      </div>
+                    </div>
                     
                     <div className="p-4 pt-0 space-y-1">
                       {order.items.map((item, idx) => (
@@ -877,24 +901,48 @@ export default function Waiter() {
                       ))}
                     </div>
 
-                    {order.status === 'ready' && (
-                      <div className="p-4 pt-0 space-y-2">
+                    {/* Action Buttons */}
+                    <div className="p-4 pt-0 space-y-2">
+                      {order.status === 'ready' && (
                         <div className="bg-success/15 text-success rounded-lg p-3 text-center font-medium animate-pulse">
                           <Bell className="w-4 h-4 inline mr-2" />
                           Ready to Serve!
                         </div>
-                        <Button 
-                          className="w-full bg-success hover:bg-success/90 text-success-foreground font-bold"
-                          onClick={() => {
-                            updateOrderStatus(order.id, 'served');
-                            toast.success(`Table ${order.tableNumber} order marked as served!`);
-                          }}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Mark as Served
-                        </Button>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        {canCancel && (
+                          <Button 
+                            variant="outline"
+                            className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              updateOrderStatus(order.id, 'cancelled');
+                              toast.success(`Order cancelled for Table ${order.tableNumber}`);
+                            }}
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                        )}
+                        
+                        {canServe && (
+                          <Button 
+                            className={`flex-1 ${
+                              order.status === 'ready' 
+                                ? 'bg-success hover:bg-success/90 text-success-foreground' 
+                                : 'bg-primary hover:bg-primary/90'
+                            } font-bold`}
+                            onClick={() => {
+                              updateOrderStatus(order.id, 'served');
+                              toast.success(`Table ${order.tableNumber} order marked as served!`);
+                            }}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Mark as Served
+                          </Button>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
