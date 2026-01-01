@@ -19,6 +19,8 @@ const UNIT_OPTIONS: { value: InventoryUnitType; label: string }[] = [
   { value: 'grams', label: 'Grams (g)' },
   { value: 'bottle', label: 'Bottles' },
   { value: 'pack', label: 'Packs' },
+  { value: 'kg', label: 'Kilograms (kg)' },
+  { value: 'liter', label: 'Liters (L)' },
 ];
 
 const DEFAULT_PORTIONS: Record<string, { name: string; size: number; multiplier: number }[]> = {
@@ -33,11 +35,57 @@ const DEFAULT_PORTIONS: Record<string, { name: string; size: number; multiplier:
   ],
   pcs: [
     { name: '1 Piece', size: 1, multiplier: 1 },
-    { name: 'Pack (20)', size: 20, multiplier: 18 },
+    { name: '6 Pack', size: 6, multiplier: 5.5 },
+    { name: '12 Pack', size: 12, multiplier: 10 },
+    { name: '24 Pack', size: 24, multiplier: 18 },
+  ],
+  grams: [
+    { name: '50g', size: 50, multiplier: 0.5 },
+    { name: '100g', size: 100, multiplier: 1 },
+    { name: '250g', size: 250, multiplier: 2.3 },
+    { name: '500g', size: 500, multiplier: 4.5 },
+    { name: '1000g (1kg)', size: 1000, multiplier: 9 },
+  ],
+  bottle: [
+    { name: '1 Bottle', size: 1, multiplier: 1 },
+    { name: '6 Pack', size: 6, multiplier: 5.5 },
+    { name: '12 Case', size: 12, multiplier: 10 },
+    { name: '24 Case', size: 24, multiplier: 18 },
+  ],
+  pack: [
+    { name: '1 Pack', size: 1, multiplier: 1 },
+    { name: '5 Packs', size: 5, multiplier: 4.5 },
+    { name: '10 Packs', size: 10, multiplier: 8.5 },
+    { name: '1 Carton (12)', size: 12, multiplier: 10 },
+  ],
+  kg: [
+    { name: '250g', size: 0.25, multiplier: 0.25 },
+    { name: '500g', size: 0.5, multiplier: 0.5 },
+    { name: '1 kg', size: 1, multiplier: 1 },
+    { name: '5 kg', size: 5, multiplier: 4.5 },
+    { name: '10 kg', size: 10, multiplier: 9 },
+    { name: '25 kg (Sack)', size: 25, multiplier: 22 },
+  ],
+  liter: [
+    { name: '250ml', size: 0.25, multiplier: 0.25 },
+    { name: '500ml', size: 0.5, multiplier: 0.5 },
+    { name: '1 Liter', size: 1, multiplier: 1 },
+    { name: '2 Liters', size: 2, multiplier: 1.9 },
+    { name: '5 Liters', size: 5, multiplier: 4.5 },
+    { name: '20 Liters', size: 20, multiplier: 18 },
   ],
 };
 
-const DEFAULT_BOTTLE_SIZES = [180, 375, 750, 1000];
+// Default container/package sizes for each unit type
+const DEFAULT_CONTAINER_SIZES: Record<InventoryUnitType, { sizes: number[]; label: string; unit: string }> = {
+  ml: { sizes: [180, 375, 750, 1000], label: 'Bottle Size', unit: 'ml' },
+  pcs: { sizes: [6, 12, 20, 24, 50], label: 'Pack Size', unit: 'pcs' },
+  grams: { sizes: [100, 250, 500, 1000], label: 'Package Weight', unit: 'g' },
+  bottle: { sizes: [6, 12, 24, 48], label: 'Case Size', unit: 'bottles' },
+  pack: { sizes: [6, 12, 20, 24], label: 'Carton Size', unit: 'packs' },
+  kg: { sizes: [1, 5, 10, 25, 50], label: 'Sack/Bag Weight', unit: 'kg' },
+  liter: { sizes: [1, 2, 5, 10, 20], label: 'Container Size', unit: 'L' },
+};
 
 // Default low stock thresholds by unit type
 const DEFAULT_THRESHOLDS: Record<InventoryUnitType, number> = {
@@ -77,21 +125,21 @@ export function InventoryManager() {
   const [selectedMenuItem, setSelectedMenuItem] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<InventoryUnitType>('pcs');
   const [lowStockThreshold, setLowStockThreshold] = useState(DEFAULT_THRESHOLDS.pcs.toString());
-  const [defaultBottleSize, setDefaultBottleSize] = useState('750');
+  const [defaultContainerSize, setDefaultContainerSize] = useState('');
   
   const [stockMenuItemId, setStockMenuItemId] = useState('');
   const [stockQuantity, setStockQuantity] = useState('');
   const [stockNotes, setStockNotes] = useState('');
   const [priceEditorItem, setPriceEditorItem] = useState<MenuItem | null>(null);
   
-  // Bottle-based stock entry
-  const [bottleCount, setBottleCount] = useState('');
-  const [bottleSize, setBottleSize] = useState('750');
-  const [customBottleSize, setCustomBottleSize] = useState('');
+  // Container-based stock entry (for all unit types)
+  const [containerCount, setContainerCount] = useState('');
+  const [containerSize, setContainerSize] = useState('');
+  const [customContainerSize, setCustomContainerSize] = useState('');
   
-  // Edit bottle size modal
-  const [editBottleSizeItemId, setEditBottleSizeItemId] = useState<string | null>(null);
-  const [editBottleSizeValue, setEditBottleSizeValue] = useState('');
+  // Edit container size modal (for all unit types)
+  const [editContainerSizeItem, setEditContainerSizeItem] = useState<{ menuItemId: string; invItem: InventoryItem } | null>(null);
+  const [editContainerSizeValue, setEditContainerSizeValue] = useState('');
 
   // Manage portions modal
   const [portionEditorItem, setPortionEditorItem] = useState<{ menuItem: MenuItem; invItem: InventoryItem } | null>(null);
@@ -113,10 +161,13 @@ export function InventoryManager() {
     !inventoryItems.some(ii => ii.menuItemId === m.id)
   );
 
-  // Update threshold when unit changes
+  // Update threshold and default container size when unit changes
   const handleUnitChange = (unit: InventoryUnitType) => {
     setSelectedUnit(unit);
     setLowStockThreshold(DEFAULT_THRESHOLDS[unit].toString());
+    // Set default container size for this unit type
+    const containerConfig = DEFAULT_CONTAINER_SIZES[unit];
+    setDefaultContainerSize(containerConfig.sizes[containerConfig.sizes.length - 2]?.toString() || containerConfig.sizes[0].toString());
   };
 
   const handleAddInventoryItem = async () => {
@@ -132,7 +183,7 @@ export function InventoryManager() {
     addInventoryItem({
       menuItemId: selectedMenuItem,
       currentStock: 0,
-      defaultBottleSize: selectedUnit === 'ml' ? parseInt(defaultBottleSize) : undefined,
+      defaultBottleSize: parseInt(defaultContainerSize) || undefined,
       unit: selectedUnit,
       lowStockThreshold: parseFloat(lowStockThreshold),
     });
@@ -163,11 +214,11 @@ export function InventoryManager() {
     setSelectedMenuItem('');
     setSelectedUnit('pcs');
     setLowStockThreshold(DEFAULT_THRESHOLDS.pcs.toString());
-    setDefaultBottleSize('750');
+    setDefaultContainerSize('');
   };
 
   const handleAddStock = () => {
-    if (!stockMenuItemId || (!stockQuantity && !bottleCount)) {
+    if (!stockMenuItemId || (!stockQuantity && !containerCount)) {
       toast.error('Select item and enter quantity');
       return;
     }
@@ -180,9 +231,9 @@ export function InventoryManager() {
 
     // Calculate total quantity
     let totalQuantity = 0;
-    if (bottleCount && bottleSize) {
-      const size = bottleSize === 'custom' ? parseFloat(customBottleSize) : parseFloat(bottleSize);
-      totalQuantity = parseFloat(bottleCount) * size;
+    if (containerCount && containerSize) {
+      const size = containerSize === 'custom' ? parseFloat(customContainerSize) : parseFloat(containerSize);
+      totalQuantity = parseFloat(containerCount) * size;
     } else if (stockQuantity) {
       totalQuantity = parseFloat(stockQuantity);
     }
@@ -192,16 +243,19 @@ export function InventoryManager() {
       return;
     }
 
-    const notes = bottleCount ? `${bottleCount} bottles × ${bottleSize === 'custom' ? customBottleSize : bottleSize}ml` + (stockNotes ? ` - ${stockNotes}` : '') : stockNotes;
+    const containerConfig = DEFAULT_CONTAINER_SIZES[invItem.unit];
+    const notes = containerCount 
+      ? `${containerCount} ${containerConfig.label.toLowerCase()}s × ${containerSize === 'custom' ? customContainerSize : containerSize}${containerConfig.unit}` + (stockNotes ? ` - ${stockNotes}` : '') 
+      : stockNotes;
     
     addStock(stockMenuItemId, totalQuantity, invItem.unit, notes);
     toast.success('Stock added successfully');
     setShowAddStockModal(false);
     setStockMenuItemId('');
     setStockQuantity('');
-    setBottleCount('');
-    setBottleSize('750');
-    setCustomBottleSize('');
+    setContainerCount('');
+    setContainerSize('');
+    setCustomContainerSize('');
     setStockNotes('');
   };
 
@@ -375,9 +429,9 @@ export function InventoryManager() {
                             {isLow && <AlertTriangle className="w-4 h-4 text-warning" />}
                           </div>
                           <p className="text-sm text-muted-foreground">{item.category}</p>
-                          {invItem.unit === 'ml' && invItem.defaultBottleSize && (
+                          {invItem.defaultBottleSize && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              Default bottle: {invItem.defaultBottleSize}ml
+                              Default {DEFAULT_CONTAINER_SIZES[invItem.unit].label.toLowerCase()}: {invItem.defaultBottleSize} {DEFAULT_CONTAINER_SIZES[invItem.unit].unit}
                             </p>
                           )}
                           <div className="flex flex-wrap gap-1 mt-2">
@@ -400,19 +454,18 @@ export function InventoryManager() {
                             >
                               <DollarSign className="w-4 h-4 mr-1" /> Prices
                             </Button>
-                            {invItem.unit === 'ml' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  setEditBottleSizeItemId(item.id);
-                                  setEditBottleSizeValue(invItem.defaultBottleSize?.toString() || '750');
-                                }}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={`Edit default ${DEFAULT_CONTAINER_SIZES[invItem.unit].label.toLowerCase()}`}
+                              onClick={() => {
+                                setEditContainerSizeItem({ menuItemId: item.id, invItem });
+                                setEditContainerSizeValue(invItem.defaultBottleSize?.toString() || DEFAULT_CONTAINER_SIZES[invItem.unit].sizes[0].toString());
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -606,19 +659,22 @@ export function InventoryManager() {
                 </SelectContent>
               </Select>
             </div>
-            {selectedUnit === 'ml' && (
-              <div>
-                <label className="text-sm font-medium">Default Bottle Size (ml)</label>
-                <Select value={defaultBottleSize} onValueChange={setDefaultBottleSize}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_BOTTLE_SIZES.map(size => (
-                      <SelectItem key={size} value={size.toString()}>{size}ml</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <label className="text-sm font-medium">{DEFAULT_CONTAINER_SIZES[selectedUnit].label} ({DEFAULT_CONTAINER_SIZES[selectedUnit].unit})</label>
+              <Select value={defaultContainerSize} onValueChange={setDefaultContainerSize}>
+                <SelectTrigger><SelectValue placeholder="Select default size" /></SelectTrigger>
+                <SelectContent>
+                  {DEFAULT_CONTAINER_SIZES[selectedUnit].sizes.map(size => (
+                    <SelectItem key={size} value={size.toString()}>
+                      {size} {DEFAULT_CONTAINER_SIZES[selectedUnit].unit}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Default container/package size for quick stock entry
+              </p>
+            </div>
             <div>
               <label className="text-sm font-medium">Low Stock Threshold ({selectedUnit})</label>
               <Input type="number" value={lowStockThreshold} onChange={e => setLowStockThreshold(e.target.value)} />
@@ -653,51 +709,59 @@ export function InventoryManager() {
               </Select>
             </div>
             
-            {/* Bottle-based entry for ml items */}
-            {inventoryItems.find(i => i.menuItemId === stockMenuItemId)?.unit === 'ml' && (
-              <div className="p-3 rounded-lg bg-muted/50 space-y-3">
-                <label className="text-sm font-medium">Quick Entry: Bottles</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Number of Bottles</label>
-                    <Input 
-                      type="number" 
-                      value={bottleCount} 
-                      onChange={e => setBottleCount(e.target.value)} 
-                      placeholder="e.g., 3"
-                    />
+            {/* Quick Entry for all unit types */}
+            {stockMenuItemId && (() => {
+              const invItem = inventoryItems.find(i => i.menuItemId === stockMenuItemId);
+              if (!invItem) return null;
+              const containerConfig = DEFAULT_CONTAINER_SIZES[invItem.unit];
+              
+              return (
+                <div className="p-3 rounded-lg bg-muted/50 space-y-3">
+                  <label className="text-sm font-medium">Quick Entry: {containerConfig.label}</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Number of {containerConfig.label}s</label>
+                      <Input 
+                        type="number" 
+                        value={containerCount} 
+                        onChange={e => setContainerCount(e.target.value)} 
+                        placeholder="e.g., 3"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">{containerConfig.label} ({containerConfig.unit})</label>
+                      <Select value={containerSize} onValueChange={setContainerSize}>
+                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                        <SelectContent>
+                          {containerConfig.sizes.map(size => (
+                            <SelectItem key={size} value={size.toString()}>
+                              {size} {containerConfig.unit}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Bottle Size (ml)</label>
-                    <Select value={bottleSize} onValueChange={setBottleSize}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DEFAULT_BOTTLE_SIZES.map(size => (
-                          <SelectItem key={size} value={size.toString()}>{size}ml</SelectItem>
-                        ))}
-                        <SelectItem value="custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {containerSize === 'custom' && (
+                    <div>
+                      <label className="text-xs text-muted-foreground">Custom Size ({containerConfig.unit})</label>
+                      <Input 
+                        type="number" 
+                        value={customContainerSize} 
+                        onChange={e => setCustomContainerSize(e.target.value)} 
+                        placeholder="Enter size"
+                      />
+                    </div>
+                  )}
+                  {containerCount && containerSize && (
+                    <div className="text-sm text-muted-foreground">
+                      Total: {parseFloat(containerCount || '0') * (containerSize === 'custom' ? parseFloat(customContainerSize || '0') : parseFloat(containerSize))} {invItem.unit}
+                    </div>
+                  )}
                 </div>
-                {bottleSize === 'custom' && (
-                  <div>
-                    <label className="text-xs text-muted-foreground">Custom Size (ml)</label>
-                    <Input 
-                      type="number" 
-                      value={customBottleSize} 
-                      onChange={e => setCustomBottleSize(e.target.value)} 
-                      placeholder="Enter size"
-                    />
-                  </div>
-                )}
-                {bottleCount && bottleSize && (
-                  <div className="text-sm text-muted-foreground">
-                    Total: {parseFloat(bottleCount || '0') * (bottleSize === 'custom' ? parseFloat(customBottleSize || '0') : parseFloat(bottleSize))}ml
-                  </div>
-                )}
-              </div>
-            )}
+              );
+            })()}
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
@@ -736,54 +800,58 @@ export function InventoryManager() {
         />
       )}
 
-      {/* Edit Bottle Size Modal */}
-      <Dialog open={!!editBottleSizeItemId} onOpenChange={(open) => !open && setEditBottleSizeItemId(null)}>
+      {/* Edit Container Size Modal */}
+      <Dialog open={!!editContainerSizeItem} onOpenChange={(open) => !open && setEditContainerSizeItem(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Default Bottle Size</DialogTitle>
+            <DialogTitle>Edit Default {editContainerSizeItem ? DEFAULT_CONTAINER_SIZES[editContainerSizeItem.invItem.unit].label : 'Size'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Set the default bottle size for: <strong>{menuItems.find(m => m.id === editBottleSizeItemId)?.name}</strong>
-            </p>
-            <div>
-              <label className="text-sm font-medium">Default Bottle Size (ml)</label>
-              <Select value={editBottleSizeValue} onValueChange={setEditBottleSizeValue}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DEFAULT_BOTTLE_SIZES.map(size => (
-                    <SelectItem key={size} value={size.toString()}>{size}ml</SelectItem>
-                  ))}
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {editBottleSizeValue === 'custom' && (
-              <div>
-                <label className="text-sm font-medium">Custom Size (ml)</label>
-                <Input
-                  type="number"
-                  value={editBottleSizeValue}
-                  onChange={e => setEditBottleSizeValue(e.target.value)}
-                  placeholder="Enter size in ml"
-                />
+          {editContainerSizeItem && (() => {
+            const containerConfig = DEFAULT_CONTAINER_SIZES[editContainerSizeItem.invItem.unit];
+            return (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Set the default {containerConfig.label.toLowerCase()} for: <strong>{menuItems.find(m => m.id === editContainerSizeItem.menuItemId)?.name}</strong>
+                </p>
+                <div>
+                  <label className="text-sm font-medium">Default {containerConfig.label} ({containerConfig.unit})</label>
+                  <Select value={editContainerSizeValue} onValueChange={setEditContainerSizeValue}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {containerConfig.sizes.map(size => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size} {containerConfig.unit}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {editContainerSizeValue === 'custom' && (
+                  <div>
+                    <label className="text-sm font-medium">Custom Size ({containerConfig.unit})</label>
+                    <Input
+                      type="number"
+                      value={editContainerSizeValue}
+                      onChange={e => setEditContainerSizeValue(e.target.value)}
+                      placeholder={`Enter size in ${containerConfig.unit}`}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditBottleSizeItemId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditContainerSizeItem(null)}>Cancel</Button>
             <Button onClick={() => {
-              if (editBottleSizeItemId) {
-                const invItem = inventoryItems.find(ii => ii.menuItemId === editBottleSizeItemId);
-                if (invItem) {
-                  const size = parseFloat(editBottleSizeValue);
-                  if (size > 0) {
-                    updateInventoryItem(invItem.id, { defaultBottleSize: size });
-                    toast.success('Default bottle size updated');
-                  }
+              if (editContainerSizeItem) {
+                const size = parseFloat(editContainerSizeValue);
+                if (size > 0) {
+                  updateInventoryItem(editContainerSizeItem.invItem.id, { defaultBottleSize: size });
+                  toast.success('Default container size updated');
                 }
               }
-              setEditBottleSizeItemId(null);
+              setEditContainerSizeItem(null);
             }}>
               Save
             </Button>
