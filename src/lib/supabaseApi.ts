@@ -13,6 +13,7 @@ const mapCategoryFromDb = (row: any) => ({
   sortOrder: row.sort_order ?? 0,
   prepTime: row.prep_time ?? 5,
   parentId: row.parent_id ?? undefined,
+  useBarPrinter: row.use_bar_printer ?? false,
 });
 
 const mapCategoryToDb = (cat: any) => ({
@@ -21,6 +22,7 @@ const mapCategoryToDb = (cat: any) => ({
   sort_order: cat.sortOrder ?? 0,
   prep_time: cat.prepTime ?? 5,
   parent_id: cat.parentId ?? null,
+  use_bar_printer: cat.useBarPrinter ?? false,
 });
 
 // Menu Items
@@ -204,6 +206,11 @@ const mapSettingsFromDb = (row: any) => {
     kitchenFullscreenMode: row.kitchen_fullscreen_mode ?? false,
     // Order management settings
     acceptedOrderCancelAdminOnly: row.accepted_order_cancel_admin_only ?? false,
+    // Dual printer settings
+    dualPrinterEnabled: row.dual_printer_enabled ?? false,
+    // Theme and sound
+    theme: row.theme ?? 'system',
+    soundAlertsEnabled: row.sound_alerts_enabled ?? true,
   };
 };
 
@@ -236,6 +243,11 @@ const mapSettingsToDb = (s: any) => {
   if (s.kitchenFullscreenMode !== undefined) db.kitchen_fullscreen_mode = s.kitchenFullscreenMode;
   // Order management settings
   if (s.acceptedOrderCancelAdminOnly !== undefined) db.accepted_order_cancel_admin_only = s.acceptedOrderCancelAdminOnly;
+  // Dual printer settings
+  if (s.dualPrinterEnabled !== undefined) db.dual_printer_enabled = s.dualPrinterEnabled;
+  // Theme and sound
+  if (s.theme !== undefined) db.theme = s.theme;
+  if (s.soundAlertsEnabled !== undefined) db.sound_alerts_enabled = s.soundAlertsEnabled;
   db.updated_at = new Date().toISOString();
   return db;
 };
