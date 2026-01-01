@@ -70,8 +70,9 @@ export async function recordPaymentBlock(
  */
 export async function overridePaymentBlock(blockId: number): Promise<boolean> {
   try {
+    // Use p_id as the parameter name (matches the database function signature)
     const { data, error } = await supabase.rpc('override_payment_block', {
-      p_block_id: blockId
+      p_id: blockId
     });
 
     if (error) {

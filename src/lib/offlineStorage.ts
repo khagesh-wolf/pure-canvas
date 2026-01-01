@@ -17,77 +17,98 @@ interface SyncQueueItem {
 class OfflineStorage {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  private isUnavailable = false; // Track if IndexedDB is unavailable
 
   async init(): Promise<void> {
+    // If IndexedDB is known to be unavailable, skip silently
+    if (this.isUnavailable) return;
     if (this.db) return;
     if (this.initPromise) return this.initPromise;
 
-    this.initPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+    // Check if IndexedDB is available at all
+    if (typeof indexedDB === 'undefined') {
+      console.warn('[OfflineStorage] IndexedDB not available in this environment');
+      this.isUnavailable = true;
+      return;
+    }
 
-      request.onerror = () => {
-        console.error('Failed to open IndexedDB:', request.error);
-        reject(request.error);
-      };
+    this.initPromise = new Promise((resolve) => {
+      try {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onsuccess = () => {
-        this.db = request.result;
-
-        // If the browser closes the connection (navigation/reload/version change),
-        // reset state so future calls can re-init cleanly.
-        this.db.onclose = () => {
-          this.db = null;
+        request.onerror = () => {
+          console.warn('[OfflineStorage] Failed to open IndexedDB:', request.error?.message || 'Unknown error');
+          // Mark as unavailable and resolve (don't reject) to prevent crashes
+          this.isUnavailable = true;
           this.initPromise = null;
+          resolve();
         };
-        this.db.onversionchange = () => {
-          try {
-            this.db?.close();
-          } finally {
+
+        request.onsuccess = () => {
+          this.db = request.result;
+
+          // If the browser closes the connection (navigation/reload/version change),
+          // reset state so future calls can re-init cleanly.
+          this.db.onclose = () => {
             this.db = null;
             this.initPromise = null;
-          }
+          };
+          this.db.onversionchange = () => {
+            try {
+              this.db?.close();
+            } finally {
+              this.db = null;
+              this.initPromise = null;
+            }
+          };
+
+          resolve();
         };
 
+        request.onupgradeneeded = (event) => {
+          const db = (event.target as IDBOpenDBRequest).result;
+
+          // Store for cached menu items
+          if (!db.objectStoreNames.contains('menuItems')) {
+            db.createObjectStore('menuItems', { keyPath: 'id' });
+          }
+
+          // Store for cached categories
+          if (!db.objectStoreNames.contains('categories')) {
+            db.createObjectStore('categories', { keyPath: 'id' });
+          }
+
+          // Store for offline orders (pending sync)
+          if (!db.objectStoreNames.contains('syncQueue')) {
+            const syncStore = db.createObjectStore('syncQueue', { keyPath: 'id' });
+            syncStore.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+
+          // Store for settings cache
+          if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings', { keyPath: 'key' });
+          }
+
+          // Store for cached images (blob URLs)
+          if (!db.objectStoreNames.contains('imageCache')) {
+            db.createObjectStore('imageCache', { keyPath: 'url' });
+          }
+        };
+      } catch (err) {
+        console.warn('[OfflineStorage] IndexedDB initialization error:', err);
+        this.isUnavailable = true;
+        this.initPromise = null;
         resolve();
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Store for cached menu items
-        if (!db.objectStoreNames.contains('menuItems')) {
-          db.createObjectStore('menuItems', { keyPath: 'id' });
-        }
-
-        // Store for cached categories
-        if (!db.objectStoreNames.contains('categories')) {
-          db.createObjectStore('categories', { keyPath: 'id' });
-        }
-
-        // Store for offline orders (pending sync)
-        if (!db.objectStoreNames.contains('syncQueue')) {
-          const syncStore = db.createObjectStore('syncQueue', { keyPath: 'id' });
-          syncStore.createIndex('timestamp', 'timestamp', { unique: false });
-        }
-
-        // Store for settings cache
-        if (!db.objectStoreNames.contains('settings')) {
-          db.createObjectStore('settings', { keyPath: 'key' });
-        }
-
-        // Store for cached images (blob URLs)
-        if (!db.objectStoreNames.contains('imageCache')) {
-          db.createObjectStore('imageCache', { keyPath: 'url' });
-        }
-      };
+      }
     });
 
     return this.initPromise;
   }
 
-  private async getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
+  private async getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore | null> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    // If IndexedDB is unavailable, return null (callers should handle gracefully)
+    if (this.isUnavailable || !this.db) return null;
 
     try {
       const tx = this.db.transaction(storeName, mode);
@@ -98,17 +119,20 @@ class OfflineStorage {
         this.db = null;
         this.initPromise = null;
         await this.init();
-        if (!this.db) throw new Error('Database not initialized');
+        if (this.isUnavailable || !this.db) return null;
         const tx = this.db.transaction(storeName, mode);
         return tx.objectStore(storeName);
       }
-      throw err;
+      console.warn('[OfflineStorage] Error getting store:', err);
+      return null;
     }
   }
 
   // Menu Items
   async cacheMenuItems(items: any[]): Promise<void> {
     const store = await this.getStore('menuItems', 'readwrite');
+    if (!store) return; // IndexedDB unavailable, skip silently
+    
     const tx = store.transaction;
     
     // Clear existing
@@ -119,24 +143,28 @@ class OfflineStorage {
       store.put(item);
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => resolve(); // Don't reject, just resolve
     });
   }
 
   async getMenuItems(): Promise<any[]> {
     const store = await this.getStore('menuItems');
-    return new Promise((resolve, reject) => {
+    if (!store) return []; // IndexedDB unavailable, return empty
+    
+    return new Promise((resolve) => {
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve([]); // Return empty on error
     });
   }
 
   // Categories
   async cacheCategories(categories: any[]): Promise<void> {
     const store = await this.getStore('categories', 'readwrite');
+    if (!store) return;
+    
     const tx = store.transaction;
     
     store.clear();
@@ -144,18 +172,20 @@ class OfflineStorage {
       store.put(cat);
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => resolve();
     });
   }
 
   async getCategories(): Promise<any[]> {
     const store = await this.getStore('categories');
-    return new Promise((resolve, reject) => {
+    if (!store) return [];
+    
+    return new Promise((resolve) => {
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve([]);
     });
   }
 
@@ -163,6 +193,7 @@ class OfflineStorage {
   async addToSyncQueue(item: Omit<SyncQueueItem, 'id' | 'timestamp' | 'retries'>): Promise<string> {
     const store = await this.getStore('syncQueue', 'readwrite');
     const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!store) return id; // Return ID even if storage unavailable
     
     const queueItem: SyncQueueItem = {
       ...item,
@@ -171,35 +202,40 @@ class OfflineStorage {
       retries: 0
     };
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const request = store.put(queueItem);
       request.onsuccess = () => resolve(id);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve(id);
     });
   }
 
   async getSyncQueue(): Promise<SyncQueueItem[]> {
     const store = await this.getStore('syncQueue');
-    return new Promise((resolve, reject) => {
+    if (!store) return [];
+    
+    return new Promise((resolve) => {
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve([]);
     });
   }
 
   async removeFromSyncQueue(id: string): Promise<void> {
     const store = await this.getStore('syncQueue', 'readwrite');
-    return new Promise((resolve, reject) => {
+    if (!store) return;
+    
+    return new Promise((resolve) => {
       const request = store.delete(id);
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve();
     });
   }
 
   async updateSyncQueueItem(id: string, updates: Partial<SyncQueueItem>): Promise<void> {
     const store = await this.getStore('syncQueue', 'readwrite');
+    if (!store) return;
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const getRequest = store.get(id);
       getRequest.onsuccess = () => {
         const item = getRequest.result;
@@ -207,31 +243,35 @@ class OfflineStorage {
           const updated = { ...item, ...updates };
           const putRequest = store.put(updated);
           putRequest.onsuccess = () => resolve();
-          putRequest.onerror = () => reject(putRequest.error);
+          putRequest.onerror = () => resolve();
         } else {
           resolve();
         }
       };
-      getRequest.onerror = () => reject(getRequest.error);
+      getRequest.onerror = () => resolve();
     });
   }
 
   // Settings cache
   async cacheSetting(key: string, value: any): Promise<void> {
     const store = await this.getStore('settings', 'readwrite');
-    return new Promise((resolve, reject) => {
+    if (!store) return;
+    
+    return new Promise((resolve) => {
       const request = store.put({ key, value, updatedAt: Date.now() });
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve();
     });
   }
 
   async getSetting(key: string): Promise<any | null> {
     const store = await this.getStore('settings');
-    return new Promise((resolve, reject) => {
+    if (!store) return null;
+    
+    return new Promise((resolve) => {
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result?.value ?? null);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve(null);
     });
   }
 
@@ -248,12 +288,12 @@ class OfflineStorage {
   // Clear all caches
   async clearAll(): Promise<void> {
     await this.init();
-    if (!this.db) return;
+    if (this.isUnavailable || !this.db) return;
 
     const stores = ['menuItems', 'categories', 'settings', 'imageCache'];
     for (const storeName of stores) {
       const store = await this.getStore(storeName, 'readwrite');
-      store.clear();
+      if (store) store.clear();
     }
   }
 }
