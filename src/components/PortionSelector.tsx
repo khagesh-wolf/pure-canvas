@@ -1,23 +1,25 @@
 import { useStore } from '@/store/useStore';
 import { MenuItem, PortionOption } from '@/types';
-import { Plus, Minus, ShoppingBag } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Plus, Minus, ShoppingBag, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 
 interface PortionSelectorProps {
   item: MenuItem;
   open: boolean;
   onClose: () => void;
   onSelect: (item: MenuItem, portion: PortionOption, price: number) => void;
+  existingCartQty?: Record<string, number>; // Track quantities already in cart per portion
 }
 
-export function PortionSelector({ item, open, onClose, onSelect }: PortionSelectorProps) {
+export function PortionSelector({ item, open, onClose, onSelect, existingCartQty = {} }: PortionSelectorProps) {
   const { getPortionsByItem, getInventoryByMenuItemId } = useStore();
   const portions = getPortionsByItem(item.id);
   
   // Track quantities for each portion
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   
-  // Get the inventory item for unit display
+  // Get the inventory item for unit display and stock checking
   const invItem = getInventoryByMenuItemId(item.id);
   
   // Filter out portions without prices
@@ -30,12 +32,49 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
     }
   }, [open]);
 
+  // Calculate available stock for a specific portion
+  const getAvailablePortions = useCallback((portion: PortionOption): number | null => {
+    if (!invItem) return null; // Not tracked in inventory - unlimited
+    
+    const currentStock = invItem.currentStock;
+    
+    // Calculate total units already in cart (including from existing cart and current selection)
+    const existingInCart = Object.entries(existingCartQty).reduce((sum, [portionId, qty]) => {
+      const p = portionsWithPrices.find(port => port.id === portionId);
+      return sum + (p ? p.size * qty : 0);
+    }, 0);
+    
+    // Calculate total units in current selection (excluding this portion)
+    const currentSelectionUnits = portionsWithPrices.reduce((sum, p) => {
+      if (p.id === portion.id) return sum;
+      return sum + (quantities[p.id] || 0) * p.size;
+    }, 0);
+    
+    const availableUnits = currentStock - existingInCart - currentSelectionUnits;
+    
+    if (portion.size > 0) {
+      return Math.floor(availableUnits / portion.size);
+    }
+    return Math.floor(availableUnits);
+  }, [invItem, existingCartQty, quantities, portionsWithPrices]);
+
   if (!open || portionsWithPrices.length === 0) return null;
 
   const getQuantity = (portionId: string) => quantities[portionId] || 0;
 
   const incrementQuantity = (portionId: string) => {
-    setQuantities(prev => ({ ...prev, [portionId]: (prev[portionId] || 0) + 1 }));
+    const portion = portionsWithPrices.find(p => p.id === portionId);
+    if (!portion) return;
+    
+    const available = getAvailablePortions(portion);
+    const currentQty = getQuantity(portionId);
+    
+    if (available !== null && currentQty >= available) {
+      toast.error(`Only ${available} ${portion.name} available in stock`);
+      return;
+    }
+    
+    setQuantities(prev => ({ ...prev, [portionId]: currentQty + 1 }));
   };
 
   const decrementQuantity = (portionId: string) => {
@@ -85,7 +124,6 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
             <p className="text-sm text-muted-foreground mt-1">Choose portion size & quantity</p>
           </div>
           
-          {/* Portions List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {portionsWithPrices
               .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -93,13 +131,19 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
                 const price = portion.fixedPrice!;
                 const qty = getQuantity(portion.id);
                 const isSelected = qty > 0;
+                const available = getAvailablePortions(portion);
+                const isOutOfStock = available !== null && available <= 0 && qty === 0;
+                const isAtLimit = available !== null && qty >= available;
+                
                 return (
                   <div
                     key={portion.id}
                     className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
-                      isSelected 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border bg-background hover:border-muted-foreground/30'
+                      isOutOfStock
+                        ? 'border-destructive/30 bg-destructive/5 opacity-60'
+                        : isSelected 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border bg-background hover:border-muted-foreground/30'
                     }`}
                   >
                     <div className="flex-1">
@@ -108,6 +152,16 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
                         <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full">
                           {portion.size} {invItem?.unit || 'units'}
                         </span>
+                        {isOutOfStock && (
+                          <span className="text-xs text-destructive px-2 py-0.5 bg-destructive/10 rounded-full flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Out of stock
+                          </span>
+                        )}
+                        {available !== null && available > 0 && available <= 5 && (
+                          <span className="text-xs text-amber-600 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                            Only {available} left
+                          </span>
+                        )}
                       </div>
                       <div className="text-lg font-bold text-primary mt-1">
                         Rs {price}
@@ -115,7 +169,9 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
                     </div>
                     
                     <div className="flex items-center gap-1">
-                      {qty > 0 ? (
+                      {isOutOfStock ? (
+                        <span className="text-sm text-destructive font-medium px-3">Unavailable</span>
+                      ) : qty > 0 ? (
                         <>
                           <button
                             onClick={() => decrementQuantity(portion.id)}
@@ -126,7 +182,12 @@ export function PortionSelector({ item, open, onClose, onSelect }: PortionSelect
                           <span className="w-10 text-center font-bold text-lg text-foreground">{qty}</span>
                           <button
                             onClick={() => incrementQuantity(portion.id)}
-                            className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all"
+                            disabled={isAtLimit}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+                              isAtLimit 
+                                ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                            }`}
                           >
                             <Plus className="w-5 h-5" />
                           </button>

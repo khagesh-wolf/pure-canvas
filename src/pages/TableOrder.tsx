@@ -535,6 +535,30 @@ export default function TableOrder() {
   // Get customer points
   const customerPoints = phone ? getCustomerPoints(phone) : 0;
 
+  // Helper to get available stock for an item (considering portions)
+  const getAvailableStock = useCallback((menuItemId: string, portionSize?: number): number | null => {
+    const invItem = getInventoryByMenuItemId(menuItemId);
+    if (!invItem) return null; // Not tracked in inventory - unlimited
+    
+    // Current stock in base units
+    const currentStock = invItem.currentStock;
+    
+    // Calculate how many portions are already in cart for this item
+    const cartQtyInUnits = cart
+      .filter(c => c.menuItemId === menuItemId)
+      .reduce((sum, c) => sum + (c.portionSize || 1) * c.qty, 0);
+    
+    // Available stock = current stock - cart qty
+    const availableUnits = currentStock - cartQtyInUnits;
+    
+    if (portionSize && portionSize > 0) {
+      // Return available portions (floor to ensure we don't oversell)
+      return Math.floor(availableUnits / portionSize);
+    }
+    
+    return Math.floor(availableUnits);
+  }, [cart, getInventoryByMenuItemId]);
+
   const addToCart = (item: typeof menuItems[0], portion?: PortionOption, customPrice?: number) => {
     hapticAddToCart();
     setLastAddedItemId(item.id);
@@ -549,6 +573,13 @@ export default function TableOrder() {
       return;
     }
     
+    // Check stock availability before adding to cart
+    const availableStock = getAvailableStock(item.id, portion?.size);
+    if (availableStock !== null && availableStock <= 0) {
+      toast.error(`${item.name} is out of stock`);
+      return;
+    }
+    
     // Create unique ID for cart item (includes portion if applicable)
     // This is used for cart grouping, but we keep the original item.id for inventory tracking
     const cartItemKey = portion 
@@ -560,6 +591,11 @@ export default function TableOrder() {
     
     const existing = cart.find(c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name));
     if (existing) {
+      // Check if we can add one more
+      if (availableStock !== null && availableStock < 1) {
+        toast.error(`Only ${getItemQty(item.id)} ${item.name} available in stock`);
+        return;
+      }
       setCart(cart.map(c =>
         (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name)) 
           ? { ...c, qty: c.qty + 1 } 
@@ -599,6 +635,17 @@ export default function TableOrder() {
     }
     
     if (!cartItem) return;
+    
+    // If increasing quantity, check stock limits
+    if (delta > 0) {
+      const availableStock = getAvailableStock(cartItem.menuItemId, cartItem.portionSize);
+      if (availableStock !== null && availableStock < delta) {
+        const invItem = getInventoryByMenuItemId(cartItem.menuItemId);
+        const menuItem = menuItems.find(m => m.id === cartItem.menuItemId);
+        toast.error(`Only ${invItem?.currentStock || 0} ${menuItem?.name || 'items'} available in stock`);
+        return;
+      }
+    }
     
     const cartItemId = cartItem.id;
     

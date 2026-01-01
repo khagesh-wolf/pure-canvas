@@ -28,7 +28,8 @@ export default function Waiter() {
   const {
     menuItems, categories, orders, settings, staff,
     isAuthenticated, currentUser, logout, loginWithPin,
-    addWaiterOrder, getOrdersByWaiter, updateOrderStatus
+    addWaiterOrder, getOrdersByWaiter, updateOrderStatus,
+    getInventoryByMenuItemId, inventoryItems
   } = useStore();
 
   // PIN Login state
@@ -202,9 +203,43 @@ export default function Waiter() {
     }
   };
 
+  // Helper to get available stock for an item
+  const getAvailableStock = (menuItemId: string, portionSize?: number): number | null => {
+    const invItem = getInventoryByMenuItemId(menuItemId);
+    if (!invItem) return null; // Not tracked in inventory - unlimited
+    
+    const currentStock = invItem.currentStock;
+    
+    // Calculate how many units are already in cart for this item
+    const cartQtyInUnits = cart
+      .filter(c => c.menuItemId === menuItemId)
+      .reduce((sum, c) => sum + (c.portionSize || 1) * c.qty, 0);
+    
+    const availableUnits = currentStock - cartQtyInUnits;
+    
+    if (portionSize && portionSize > 0) {
+      return Math.floor(availableUnits / portionSize);
+    }
+    
+    return Math.floor(availableUnits);
+  };
+
   const handleAddToCart = (item: MenuItem) => {
+    // Check stock availability before adding to cart
+    const availableStock = getAvailableStock(item.id);
+    if (availableStock !== null && availableStock <= 0) {
+      toast.error(`${item.name} is out of stock`);
+      return;
+    }
+    
     const existing = cart.find(c => c.menuItemId === item.id);
     if (existing) {
+      // Check if we can add one more
+      if (availableStock !== null && availableStock < 1) {
+        const invItem = getInventoryByMenuItemId(item.id);
+        toast.error(`Only ${invItem?.currentStock || 0} ${item.name} available in stock`);
+        return;
+      }
       setCart(cart.map(c => 
         c.menuItemId === item.id ? { ...c, qty: c.qty + 1 } : c
       ));
@@ -225,6 +260,19 @@ export default function Waiter() {
   };
 
   const handleUpdateQty = (itemId: string, delta: number) => {
+    // If increasing, check stock limits
+    if (delta > 0) {
+      const cartItem = cart.find(c => c.id === itemId);
+      if (cartItem) {
+        const availableStock = getAvailableStock(cartItem.menuItemId, cartItem.portionSize);
+        if (availableStock !== null && availableStock < delta) {
+          const invItem = getInventoryByMenuItemId(cartItem.menuItemId);
+          toast.error(`Only ${invItem?.currentStock || 0} ${cartItem.name} available in stock`);
+          return;
+        }
+      }
+    }
+    
     setCart(cart.map(c => {
       if (c.id === itemId) {
         const newQty = c.qty + delta;

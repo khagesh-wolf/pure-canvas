@@ -177,6 +177,49 @@ export function DataProvider({ children }: DataProviderProps) {
           });
         }
       )
+      // Inventory transactions - Track stock movements
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory_transactions' },
+        () => {
+          debouncedFetch('inventory_transactions', async () => {
+            console.log('[Realtime] Inventory transactions synced');
+            const [inventoryItems, inventoryTransactions, lowStockItems] = await Promise.all([
+              inventoryItemsApi.getAll().catch(() => []),
+              inventoryTransactionsApi.getAll().catch(() => []),
+              getLowStockItems().catch(() => []),
+            ]);
+            const store = useStore.getState();
+            store.setInventoryItems(inventoryItems);
+            store.setInventoryTransactions(inventoryTransactions);
+            store.setLowStockItems(lowStockItems);
+          });
+        }
+      )
+      // Portion options - Sync portion configuration changes
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'portion_options' },
+        () => {
+          debouncedFetch('portion_options', async () => {
+            console.log('[Realtime] Portion options synced');
+            const portionOptions = await portionOptionsApi.getAll().catch(() => []);
+            useStore.getState().setPortionOptions(portionOptions);
+          });
+        }
+      )
+      // Item portion prices - Sync price changes
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'item_portion_prices' },
+        () => {
+          debouncedFetch('item_portion_prices', async () => {
+            console.log('[Realtime] Item portion prices synced');
+            const itemPortionPrices = await itemPortionPricesApi.getAll().catch(() => []);
+            useStore.getState().setItemPortionPrices(itemPortionPrices);
+          });
+        }
+      )
       // Menu items - Sync availability and price changes
       .on(
         'postgres_changes',
@@ -210,6 +253,54 @@ export function DataProvider({ children }: DataProviderProps) {
             console.log('[Realtime] Settings synced');
             const settings = await settingsApi.get().catch(() => null);
             if (settings) useStore.getState().setSettings(settings);
+          });
+        }
+      )
+      // Expenses - Sync expense entries for accounting
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'expenses' },
+        () => {
+          debouncedFetch('expenses', async () => {
+            console.log('[Realtime] Expenses synced');
+            const expenses = await expensesApi.getAll().catch(() => []);
+            useStore.getState().setExpenses(expenses);
+          });
+        }
+      )
+      // Staff - Sync staff changes
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'staff' },
+        () => {
+          debouncedFetch('staff', async () => {
+            console.log('[Realtime] Staff synced');
+            const staff = await staffApi.getAll().catch(() => []);
+            useStore.getState().setStaff(staff);
+          });
+        }
+      )
+      // Customers - Sync customer data
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customers' },
+        () => {
+          debouncedFetch('customers', async () => {
+            console.log('[Realtime] Customers synced');
+            const customers = await customersApi.getAll().catch(() => []);
+            useStore.getState().setCustomers(customers);
+          });
+        }
+      )
+      // Transactions - Sync payment transactions
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        () => {
+          debouncedFetch('transactions', async () => {
+            console.log('[Realtime] Transactions synced');
+            const transactions = await transactionsApi.getAll().catch(() => []);
+            useStore.getState().setTransactions(transactions);
           });
         }
       )
