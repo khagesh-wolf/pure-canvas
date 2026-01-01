@@ -1204,12 +1204,16 @@ export default function Counter() {
                       <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Customer</th>
                       <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Items</th>
                       <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Total</th>
+                      {/* Show Actions column if setting is OFF or user has admin access */}
+                      {(!settings.acceptedOrderCancelAdminOnly || currentUser?.role === 'admin' || settings.counterAsAdmin) && (
+                        <th className="p-3 md:p-4 text-left font-semibold text-muted-foreground text-sm">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAcceptedOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-muted-foreground">No accepted orders.</td>
+                        <td colSpan={(!settings.acceptedOrderCancelAdminOnly || currentUser?.role === 'admin' || settings.counterAsAdmin) ? 7 : 6} className="text-center py-8 text-muted-foreground">No accepted orders.</td>
                       </tr>
                     ) : (
                       filteredAcceptedOrders.slice(0, acceptedLimit).map(order => (
@@ -1220,6 +1224,26 @@ export default function Counter() {
                           <td className="p-3 md:p-4 text-sm text-foreground">{order.customerPhone}</td>
                           <td className="p-3 md:p-4 text-sm text-foreground">{order.items.map(i => `${i.qty}x ${i.name}`).join(', ')}</td>
                           <td className="p-3 md:p-4 font-bold text-sm text-foreground">रू{order.total}</td>
+                          {/* Cancel button - shown if setting is OFF or user has admin access */}
+                          {(!settings.acceptedOrderCancelAdminOnly || currentUser?.role === 'admin' || settings.counterAsAdmin) && (
+                            <td className="p-3 md:p-4">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Cancel order #${order.id.slice(-6)}? This cannot be undone.`)) {
+                                    updateOrderStatus(order.id, 'cancelled');
+                                    toast.info(`Order #${order.id.slice(-6)} cancelled`);
+                                  }
+                                }}
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Cancel
+                              </Button>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}

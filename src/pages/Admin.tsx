@@ -1963,6 +1963,29 @@ export default function Admin() {
                         />
                       </div>
                     </div>
+
+                    {/* Accepted Order Cancel - Admin Only */}
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium">Admin-Only Order Cancellation</label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Only Admin or Counter with admin access can cancel accepted orders.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={settings.acceptedOrderCancelAdminOnly || false}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateSettings({ acceptedOrderCancelAdminOnly: checked });
+                              toast.success(checked ? 'Only admin can cancel accepted orders' : 'All staff can cancel accepted orders');
+                            } catch (err) {
+                              toast.error('Failed to save setting');
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
