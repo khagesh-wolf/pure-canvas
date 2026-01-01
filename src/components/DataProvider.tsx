@@ -139,6 +139,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
     let activeChannel: ReturnType<typeof supabase.channel> | null = null;
     let destroyed = false;
+    let isSubscribed = false; // Track if currently subscribed
 
     const reconnectAttemptRef = { current: 0 };
     const reconnectTimerRef = { current: null as ReturnType<typeof setTimeout> | null };
@@ -372,6 +373,7 @@ export function DataProvider({ children }: DataProviderProps) {
           console.log('[Realtime] Subscription status:', status);
 
           if (status === 'SUBSCRIBED') {
+            isSubscribed = true;
             reconnectAttemptRef.current = 0;
             hasShownRealtimeToastRef.current = false;
             clearRealtimeWatchdog();
@@ -381,6 +383,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
           // Reconnect on known failure states
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            isSubscribed = false;
             scheduleReconnect(status);
           }
         });
@@ -405,16 +408,12 @@ export function DataProvider({ children }: DataProviderProps) {
       setupRealtime();
     };
 
-    // Handle tab visibility change - reconnect when user returns to the tab
+    // Handle tab visibility change - only refresh data, don't force reconnect if already connected
     const handleVisibilityChange = () => {
       if (destroyed) return;
       
       if (document.visibilityState === 'visible') {
-        console.log('[DataProvider] Tab became visible — checking connection and refreshing data');
-        
-        // Reset reconnect attempts when tab becomes visible
-        reconnectAttemptRef.current = 0;
-        hasShownRealtimeToastRef.current = false;
+        console.log('[DataProvider] Tab became visible — refreshing data');
         
         // Refresh data immediately when returning to tab
         debouncedFetch(
@@ -431,28 +430,18 @@ export function DataProvider({ children }: DataProviderProps) {
           100
         );
 
-        // Re-establish realtime connection
-        setupRealtime();
+        // Only reconnect if not currently subscribed
+        if (!isSubscribed) {
+          console.log('[DataProvider] Not subscribed, attempting reconnect');
+          reconnectAttemptRef.current = 0;
+          hasShownRealtimeToastRef.current = false;
+          setupRealtime();
+        }
       }
-    };
-
-    // Handle window focus - also reconnect when window regains focus
-    const handleFocus = () => {
-      if (destroyed) return;
-      
-      // Only trigger if document is visible (avoids double-triggering with visibilitychange)
-      if (document.visibilityState !== 'visible') return;
-      
-      console.log('[DataProvider] Window focused — ensuring realtime connection');
-      
-      // Reset and reconnect
-      reconnectAttemptRef.current = 0;
-      setupRealtime();
     };
 
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
 
     setupRealtime();
 
@@ -460,7 +449,6 @@ export function DataProvider({ children }: DataProviderProps) {
     return () => {
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
       destroyed = true;
       clearReconnectTimer();
       clearRealtimeWatchdog();

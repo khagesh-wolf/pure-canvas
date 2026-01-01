@@ -19,6 +19,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group pointer-events-none [&>*]:pointer-events-auto"
       position={isMobile ? "bottom-center" : "bottom-right"}
       closeButton
+      visibleToasts={3}
+      expand={false}
+      richColors
       style={isMobile ? { bottom: "100px" } : undefined}
       toastOptions={{
         classNames: {
