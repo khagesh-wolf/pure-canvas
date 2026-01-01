@@ -177,7 +177,7 @@ const mapStaffToDb = (s: any) => ({
 const mapSettingsFromDb = (row: any) => {
   if (!row) return {};
   return {
-    restaurantName: row.restaurant_name ?? 'Chiyadani',
+    restaurantName: row.restaurant_name ?? 'Sajilo Orders',
     restaurantSubName: row.restaurant_sub_name ?? '',
     tableCount: row.table_count ?? 10,
     wifiSSID: row.wifi_ssid ?? '',
@@ -202,6 +202,8 @@ const mapSettingsFromDb = (row: any) => {
     kdsEnabled: row.kds_enabled ?? false,
     kotPrintingEnabled: row.kot_printing_enabled ?? false,
     kitchenFullscreenMode: row.kitchen_fullscreen_mode ?? false,
+    // Order management settings
+    acceptedOrderCancelAdminOnly: row.accepted_order_cancel_admin_only ?? false,
   };
 };
 
@@ -232,6 +234,8 @@ const mapSettingsToDb = (s: any) => {
   if (s.kdsEnabled !== undefined) db.kds_enabled = s.kdsEnabled;
   if (s.kotPrintingEnabled !== undefined) db.kot_printing_enabled = s.kotPrintingEnabled;
   if (s.kitchenFullscreenMode !== undefined) db.kitchen_fullscreen_mode = s.kitchenFullscreenMode;
+  // Order management settings
+  if (s.acceptedOrderCancelAdminOnly !== undefined) db.accepted_order_cancel_admin_only = s.acceptedOrderCancelAdminOnly;
   db.updated_at = new Date().toISOString();
   return db;
 };
