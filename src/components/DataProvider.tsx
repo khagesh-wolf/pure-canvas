@@ -140,6 +140,7 @@ export function DataProvider({ children }: DataProviderProps) {
     let activeChannel: ReturnType<typeof supabase.channel> | null = null;
     let destroyed = false;
     let isSubscribed = false; // Track if currently subscribed
+    let isTabVisible = document.visibilityState === 'visible'; // Track tab visibility
 
     const reconnectAttemptRef = { current: 0 };
     const reconnectTimerRef = { current: null as ReturnType<typeof setTimeout> | null };
@@ -198,6 +199,12 @@ export function DataProvider({ children }: DataProviderProps) {
     const scheduleReconnect = (status: RealtimeStatus) => {
       if (destroyed) return;
 
+      // Don't spam reconnect attempts or toasts when tab is hidden
+      if (!isTabVisible) {
+        console.log('[DataProvider] Tab hidden, deferring reconnect');
+        return;
+      }
+
       // When realtime is down, ensure counter still gets new customer orders.
       startOrdersPolling();
 
@@ -208,15 +215,17 @@ export function DataProvider({ children }: DataProviderProps) {
       const delay = Math.min(20000, 1000 * Math.pow(2, reconnectAttemptRef.current));
       reconnectAttemptRef.current += 1;
 
-      if (!hasShownRealtimeToastRef.current) {
+      // Only show toast once per reconnect cycle, and only if tab is visible
+      if (!hasShownRealtimeToastRef.current && isTabVisible) {
         hasShownRealtimeToastRef.current = true;
         toast.warning('Realtime disconnected. Reconnecting...', {
           description: `Status: ${status}. Orders may take a moment to sync.`,
+          duration: 4000,
         });
       }
 
       reconnectTimerRef.current = setTimeout(() => {
-        if (destroyed) return;
+        if (destroyed || !isTabVisible) return;
         setupRealtime();
       }, delay);
     };
@@ -412,7 +421,9 @@ export function DataProvider({ children }: DataProviderProps) {
     const handleVisibilityChange = () => {
       if (destroyed) return;
       
-      if (document.visibilityState === 'visible') {
+      isTabVisible = document.visibilityState === 'visible';
+      
+      if (isTabVisible) {
         console.log('[DataProvider] Tab became visible — refreshing data');
         
         // Refresh data immediately when returning to tab
@@ -437,6 +448,10 @@ export function DataProvider({ children }: DataProviderProps) {
           hasShownRealtimeToastRef.current = false;
           setupRealtime();
         }
+      } else {
+        console.log('[DataProvider] Tab hidden — pausing reconnect attempts');
+        // Clear any pending reconnect timers when tab goes hidden
+        clearReconnectTimer();
       }
     };
 

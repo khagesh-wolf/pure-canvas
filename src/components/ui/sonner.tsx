@@ -22,7 +22,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       visibleToasts={3}
       expand={false}
       richColors
-      style={isMobile ? { bottom: "100px" } : undefined}
+      dir="ltr"
+      style={isMobile ? { bottom: "100px" } : { bottom: "24px", right: "24px" }}
       toastOptions={{
         classNames: {
           toast:
@@ -33,6 +34,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           closeButton:
             "!absolute !right-3 !left-auto !top-1/2 !-translate-y-1/2 !bg-muted/40 hover:!bg-muted/70 !text-foreground/70 hover:!text-foreground !border-0 !rounded-md !p-1 !h-7 !w-7",
         },
+        duration: 4000,
       }}
       {...props}
     />
