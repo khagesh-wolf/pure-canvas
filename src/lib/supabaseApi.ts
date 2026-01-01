@@ -1,5 +1,6 @@
 // Supabase API Client with camelCase <-> snake_case mapping
 import { supabase } from './supabase';
+import type { Order, OrderStatus } from '@/types';
 
 // ===========================================
 // FIELD MAPPERS
@@ -44,12 +45,12 @@ const mapMenuItemToDb = (item: any) => ({
 });
 
 // Orders
-const mapOrderFromDb = (row: any) => ({
+const mapOrderFromDb = (row: any): Order => ({
   id: row.id,
   tableNumber: row.table_number,
   customerPhone: row.customer_phone ?? '',
   items: row.items ?? [],
-  status: row.status ?? 'pending',
+  status: (row.status ?? 'pending') as OrderStatus,
   total: Number(row.total),
   notes: row.notes ?? '',
   createdAt: row.created_at,
@@ -57,7 +58,8 @@ const mapOrderFromDb = (row: any) => ({
   // Waiter order fields
   createdBy: row.created_by ?? undefined,
   isWaiterOrder: row.is_waiter_order ?? false,
-  priority: row.priority ?? 'normal',
+  // Priority: DB stores SMALLINT (0=normal, 1=rush)
+  priority: row.priority === 1 ? 'rush' : 'normal',
 });
 
 const mapOrderToDb = (order: any) => ({
@@ -73,7 +75,8 @@ const mapOrderToDb = (order: any) => ({
   // Waiter order fields
   created_by: order.createdBy ?? null,
   is_waiter_order: order.isWaiterOrder ?? false,
-  priority: order.priority ?? 'normal',
+  // Priority: DB expects SMALLINT (0=normal, 1=rush)
+  priority: order.priority === 'rush' ? 1 : 0,
 });
 
 // Bills
