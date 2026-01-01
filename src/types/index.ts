@@ -139,6 +139,8 @@ export interface Settings {
   theme?: 'light' | 'dark' | 'system';
   // Sound alerts
   soundAlertsEnabled?: boolean;
+  // Order cancellation restriction
+  acceptedOrderCancelAdminOnly?: boolean; // If true, only admin/counter-as-admin can cancel accepted orders
 }
 
 export interface DashboardStats {
