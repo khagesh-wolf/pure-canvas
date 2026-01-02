@@ -483,9 +483,29 @@ export default function Counter() {
     toast.info(`${rejected} order${rejected > 1 ? 's' : ''} rejected`);
   };
 
+  const aggregateOrderItemsForPrint = (items: OrderItem[]): OrderItem[] => {
+    const map = new Map<string, OrderItem>();
+
+    for (const item of items) {
+      const key = `${item.menuItemId}__${item.price}__${item.name}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.qty += item.qty;
+      } else {
+        map.set(key, { ...item });
+      }
+    }
+
+    return Array.from(map.values());
+  };
+
   const printKOTGroup = (group: PendingOrderGroup) => {
     const allNotes = group.orders.filter(o => o.notes).map(o => o.notes).join('; ');
-    
+
+    // IMPORTANT: group.allItems is aggregated for UI display and may NOT contain menuItemId.
+    // For printer routing we must use raw order items.
+    const rawItems: OrderItem[] = group.orders.flatMap(o => o.items);
+
     // Check if dual printer mode is enabled
     if (settings.dualPrinterEnabled) {
       // Build categoryKey (id or name) -> useBarPrinter map
@@ -507,10 +527,10 @@ export default function Counter() {
       const kitchenItems: OrderItem[] = [];
       const barItems: OrderItem[] = [];
 
-      group.allItems.forEach(item => {
+      rawItems.forEach(item => {
         const categoryKey = menuItemCategoryMap.get(item.menuItemId);
         const useBarPrinter = categoryKey ? (categoryBarPrinterMap.get(categoryKey) ?? false) : false;
-        
+
         if (useBarPrinter) {
           barItems.push(item);
         } else {
@@ -518,20 +538,23 @@ export default function Counter() {
         }
       });
 
+      const kitchenPrintItems = aggregateOrderItemsForPrint(kitchenItems);
+      const barPrintItems = aggregateOrderItemsForPrint(barItems);
+
       // Print Kitchen KOT if there are kitchen items
-      if (kitchenItems.length > 0) {
-        printSingleKOT(group, kitchenItems, allNotes, 'KITCHEN ORDER');
+      if (kitchenPrintItems.length > 0) {
+        printSingleKOT(group, kitchenPrintItems, allNotes, 'KITCHEN ORDER');
       }
 
       // Print Bar KOT if there are bar items (with delay for browser popup blocking)
-      if (barItems.length > 0) {
+      if (barPrintItems.length > 0) {
         setTimeout(() => {
-          printSingleKOT(group, barItems, allNotes, 'BAR ORDER');
+          printSingleKOT(group, barPrintItems, allNotes, 'BAR ORDER');
         }, 500);
       }
     } else {
       // Single printer mode - print all items together
-      printSingleKOT(group, group.allItems, allNotes, 'KITCHEN ORDER');
+      printSingleKOT(group, aggregateOrderItemsForPrint(rawItems), allNotes, 'KITCHEN ORDER');
     }
   };
 
