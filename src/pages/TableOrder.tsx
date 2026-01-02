@@ -655,16 +655,7 @@ export default function TableOrder() {
         return newQty > 0 ? { ...c, qty: newQty } : c;
       }
       return c;
-    }).filter(c => c.qty > 0 || cart.find(x => x.id === cartItemId)?.qty !== 1 || delta !== -1));
-    
-    // Remove items with qty 0
-    setCart(prev => prev.filter(c => {
-      const item = prev.find(x => x.id === cartItemId);
-      if (item && item.qty + delta <= 0 && c.id === cartItemId) {
-        return false;
-      }
-      return true;
-    }));
+    }).filter(c => c.qty > 0));
   };
 
   // removeFromCart also handles both cart item ID and menu item ID
