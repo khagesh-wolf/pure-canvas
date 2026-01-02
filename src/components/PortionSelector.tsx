@@ -8,7 +8,7 @@ interface PortionSelectorProps {
   item: MenuItem;
   open: boolean;
   onClose: () => void;
-  onSelect: (item: MenuItem, portion: PortionOption, price: number) => void;
+  onSelect: (item: MenuItem, portion: PortionOption, price: number, qty: number) => void;
   existingCartQty?: Record<string, number>; // Track quantities already in cart per portion
 }
 
@@ -86,12 +86,12 @@ export function PortionSelector({ item, open, onClose, onSelect, existingCartQty
   };
 
   const handleAddToCart = () => {
-    // Add each portion the specified number of times
+    // Add each portion with its quantity
     portionsWithPrices.forEach(portion => {
       const qty = getQuantity(portion.id);
-      const price = portion.fixedPrice!;
-      for (let i = 0; i < qty; i++) {
-        onSelect(item, portion, price);
+      if (qty > 0) {
+        const price = portion.fixedPrice!;
+        onSelect(item, portion, price, qty);
       }
     });
     onClose();

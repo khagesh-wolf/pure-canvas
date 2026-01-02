@@ -226,7 +226,7 @@ export default function Waiter() {
     return Math.floor(availableUnits);
   };
 
-  const handleAddToCart = (item: MenuItem, portion?: PortionOption, customPrice?: number) => {
+  const handleAddToCart = (item: MenuItem, portion?: PortionOption, customPrice?: number, qty: number = 1) => {
     // Check if item has portions (inventory tracked with portions)
     const portions = getPortionsByItem(item.id);
     const portionsWithPrices = portions.filter(p => p.fixedPrice != null);
@@ -238,8 +238,8 @@ export default function Waiter() {
     
     // Check stock availability before adding to cart
     const availableStock = getAvailableStock(item.id, portion?.size);
-    if (availableStock !== null && availableStock <= 0) {
-      toast.error(`${item.name} is out of stock`);
+    if (availableStock !== null && availableStock < qty) {
+      toast.error(`Only ${availableStock} ${item.name} available in stock`);
       return;
     }
     
@@ -253,15 +253,14 @@ export default function Waiter() {
     
     const existing = cart.find(c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name));
     if (existing) {
-      // Check if we can add one more
-      if (availableStock !== null && availableStock < 1) {
-        const invItem = getInventoryByMenuItemId(item.id);
-        toast.error(`Only ${invItem?.currentStock || 0} ${item.name} available in stock`);
+      // Check if we can add more
+      if (availableStock !== null && availableStock < qty) {
+        toast.error(`Only ${availableStock} ${item.name} available in stock`);
         return;
       }
       setCart(cart.map(c => 
         (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name))
-          ? { ...c, qty: c.qty + 1 } 
+          ? { ...c, qty: c.qty + qty } 
           : c
       ));
     } else {
@@ -270,17 +269,17 @@ export default function Waiter() {
         menuItemId: item.id,
         name: itemName,
         price: price,
-        qty: 1,
+        qty: qty,
         portionSize: portion?.size,
         portionName: portion?.name,
       }]);
     }
-    toast.success(`Added ${itemName}`);
+    toast.success(`Added ${qty}× ${itemName}`);
   };
 
   // Handle portion selection
-  const handlePortionSelect = (item: MenuItem, portion: PortionOption, price: number) => {
-    handleAddToCart(item, portion, price);
+  const handlePortionSelect = (item: MenuItem, portion: PortionOption, price: number, qty: number) => {
+    handleAddToCart(item, portion, price, qty);
     setPortionSelectorItem(null);
   };
 

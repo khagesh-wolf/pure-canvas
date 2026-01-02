@@ -559,7 +559,7 @@ export default function TableOrder() {
     return Math.floor(availableUnits);
   }, [cart, getInventoryByMenuItemId]);
 
-  const addToCart = (item: typeof menuItems[0], portion?: PortionOption, customPrice?: number) => {
+  const addToCart = (item: typeof menuItems[0], portion?: PortionOption, customPrice?: number, qty: number = 1) => {
     hapticAddToCart();
     setLastAddedItemId(item.id);
     setTimeout(() => setLastAddedItemId(null), 400);
@@ -575,8 +575,8 @@ export default function TableOrder() {
     
     // Check stock availability before adding to cart
     const availableStock = getAvailableStock(item.id, portion?.size);
-    if (availableStock !== null && availableStock <= 0) {
-      toast.error(`${item.name} is out of stock`);
+    if (availableStock !== null && availableStock < qty) {
+      toast.error(`Only ${availableStock} ${item.name} available in stock`);
       return;
     }
     
@@ -591,14 +591,14 @@ export default function TableOrder() {
     
     const existing = cart.find(c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name));
     if (existing) {
-      // Check if we can add one more
-      if (availableStock !== null && availableStock < 1) {
-        toast.error(`Only ${getItemQty(item.id)} ${item.name} available in stock`);
+      // Check if we can add more
+      if (availableStock !== null && availableStock < qty) {
+        toast.error(`Only ${availableStock} ${item.name} available in stock`);
         return;
       }
       setCart(cart.map(c =>
         (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name)) 
-          ? { ...c, qty: c.qty + 1 } 
+          ? { ...c, qty: c.qty + qty } 
           : c
       ));
     } else {
@@ -606,7 +606,7 @@ export default function TableOrder() {
         id: cartItemKey, // Use compound key for cart identification
         menuItemId: item.id, // Keep original menu item ID for inventory tracking
         name: itemName,
-        qty: 1,
+        qty: qty,
         price: price,
         portionSize: portion?.size,
         portionName: portion?.name,
@@ -615,8 +615,8 @@ export default function TableOrder() {
   };
 
   // Handle portion selection
-  const handlePortionSelect = (item: MenuItem, portion: PortionOption, price: number) => {
-    addToCart(item, portion, price);
+  const handlePortionSelect = (item: MenuItem, portion: PortionOption, price: number, qty: number) => {
+    addToCart(item, portion, price, qty);
     setPortionSelectorItem(null);
   };
 
