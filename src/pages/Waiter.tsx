@@ -235,45 +235,48 @@ export default function Waiter() {
       setPortionSelectorItem(item);
       return;
     }
-    
+
     // Check stock availability before adding to cart
     const availableStock = getAvailableStock(item.id, portion?.size);
     if (availableStock !== null && availableStock < qty) {
       toast.error(`Only ${availableStock} ${item.name} available in stock`);
       return;
     }
-    
+
     // Create unique ID for cart item (includes portion if applicable)
-    const cartItemKey = portion 
-      ? `${item.id}-${portion.id}` 
-      : item.id;
-    
+    const cartItemKey = portion ? `${item.id}-${portion.id}` : item.id;
+
     const price = customPrice ?? item.price;
     const itemName = portion ? `${item.name} (${portion.name})` : item.name;
-    
-    const existing = cart.find(c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name));
-    if (existing) {
-      // Check if we can add more
-      if (availableStock !== null && availableStock < qty) {
-        toast.error(`Only ${availableStock} ${item.name} available in stock`);
-        return;
+
+    // IMPORTANT: use functional setCart so selecting multiple portions in one modal adds all of them.
+    setCart(prev => {
+      const existing = prev.find(
+        c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name)
+      );
+
+      if (existing) {
+        return prev.map(c =>
+          (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name))
+            ? { ...c, qty: c.qty + qty }
+            : c
+        );
       }
-      setCart(cart.map(c => 
-        (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name))
-          ? { ...c, qty: c.qty + qty } 
-          : c
-      ));
-    } else {
-      setCart([...cart, {
-        id: cartItemKey,
-        menuItemId: item.id,
-        name: itemName,
-        price: price,
-        qty: qty,
-        portionSize: portion?.size,
-        portionName: portion?.name,
-      }]);
-    }
+
+      return [
+        ...prev,
+        {
+          id: cartItemKey,
+          menuItemId: item.id,
+          name: itemName,
+          price,
+          qty,
+          portionSize: portion?.size,
+          portionName: portion?.name,
+        },
+      ];
+    });
+
     toast.success(`Added ${qty}× ${itemName}`);
   };
 

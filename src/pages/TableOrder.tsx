@@ -563,7 +563,7 @@ export default function TableOrder() {
     hapticAddToCart();
     setLastAddedItemId(item.id);
     setTimeout(() => setLastAddedItemId(null), 400);
-    
+
     // Check if item has portions (inventory tracked with portions)
     const portions = getPortionsByItem(item.id);
     const portionsWithPrices = portions.filter(p => p.fixedPrice != null);
@@ -572,46 +572,48 @@ export default function TableOrder() {
       setPortionSelectorItem(item);
       return;
     }
-    
+
     // Check stock availability before adding to cart
     const availableStock = getAvailableStock(item.id, portion?.size);
     if (availableStock !== null && availableStock < qty) {
       toast.error(`Only ${availableStock} ${item.name} available in stock`);
       return;
     }
-    
+
     // Create unique ID for cart item (includes portion if applicable)
     // This is used for cart grouping, but we keep the original item.id for inventory tracking
-    const cartItemKey = portion 
-      ? `${item.id}-${portion.id}` 
-      : item.id;
-    
+    const cartItemKey = portion ? `${item.id}-${portion.id}` : item.id;
+
     const price = customPrice ?? item.price;
     const itemName = portion ? `${item.name} (${portion.name})` : item.name;
-    
-    const existing = cart.find(c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name));
-    if (existing) {
-      // Check if we can add more
-      if (availableStock !== null && availableStock < qty) {
-        toast.error(`Only ${availableStock} ${item.name} available in stock`);
-        return;
+
+    // IMPORTANT: use functional setCart so selecting multiple portions in one modal adds all of them.
+    setCart(prev => {
+      const existing = prev.find(
+        c => c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name)
+      );
+
+      if (existing) {
+        return prev.map(c =>
+          (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name))
+            ? { ...c, qty: c.qty + qty }
+            : c
+        );
       }
-      setCart(cart.map(c =>
-        (c.id === cartItemKey || (c.menuItemId === item.id && c.portionName === portion?.name)) 
-          ? { ...c, qty: c.qty + qty } 
-          : c
-      ));
-    } else {
-      setCart([...cart, {
-        id: cartItemKey, // Use compound key for cart identification
-        menuItemId: item.id, // Keep original menu item ID for inventory tracking
-        name: itemName,
-        qty: qty,
-        price: price,
-        portionSize: portion?.size,
-        portionName: portion?.name,
-      }]);
-    }
+
+      return [
+        ...prev,
+        {
+          id: cartItemKey, // Use compound key for cart identification
+          menuItemId: item.id, // Keep original menu item ID for inventory tracking
+          name: itemName,
+          qty,
+          price,
+          portionSize: portion?.size,
+          portionName: portion?.name,
+        },
+      ];
+    });
   };
 
   // Handle portion selection
