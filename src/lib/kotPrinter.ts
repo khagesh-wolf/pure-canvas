@@ -83,6 +83,46 @@ class KOTPrinter {
     console.log('='.repeat(32));
   }
 
+  // Open print window for KOT (browser print dialog)
+  openPrintWindow(data: KOTData): void {
+    const printContent = `
+      <div style="font-family: monospace; width: 300px; padding: 10px;">
+        <div style="text-align: center; border-bottom: 1px dashed black; padding-bottom: 10px; margin-bottom: 10px;">
+          <h2 style="margin: 0;">${data.printerLabel || 'KITCHEN ORDER TICKET'}</h2>
+          <div>${data.time}</div>
+        </div>
+        <div style="font-size: 1.2rem; font-weight: bold; text-align: center; margin: 10px 0; border: 2px solid black; padding: 5px;">
+          TABLE ${data.tableNumber}
+        </div>
+        ${data.waiterName ? `<div style="text-align: center; margin-bottom: 10px;">Waiter: ${data.waiterName}</div>` : ''}
+        <div style="border-bottom: 2px solid black; margin-bottom: 10px;"></div>
+        ${data.items.map(i => `
+          <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; margin-bottom: 5px;">
+            <span>${i.qty} x</span>
+            <span>${i.name}</span>
+          </div>
+        `).join('')}
+        ${data.notes ? `
+          <div style="border-top: 1px dashed black; margin-top: 10px; padding-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">📝 Notes:</div>
+            <div style="font-size: 1.1rem;">${data.notes}</div>
+          </div>
+        ` : ''}
+        <div style="border-top: 2px solid black; margin-top: 20px; padding-top: 10px; text-align: center;">
+          Order: #${data.orderId}
+        </div>
+      </div>
+    `;
+    
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+      printWindow.close();
+    }
+  }
+
   private formatKOT(data: KOTData): string {
     let content = '';
     content += `${'='.repeat(32)}\n`;
@@ -203,45 +243,45 @@ async function printDualKOT(
 
   let success = true;
 
-  // Print/log Kitchen KOT if there are kitchen items
+  // Print Kitchen KOT if there are kitchen items
   if (kitchenItems.length > 0) {
     const kitchenStatus = dualPrinter.kitchenPrinter.isConnected();
     if (kitchenStatus) {
       const printed = await dualPrinter.kitchenPrinter.printKOT({
         ...baseData,
         items: kitchenItems,
-        printerLabel: 'KITCHEN ORDER'
+        printerLabel: '🍳 KITCHEN ORDER'
       });
       success = success && printed;
     } else {
-      // Log to console when printer not connected
-      console.log('\n🍳 KITCHEN PRINTER OUTPUT:');
-      kotPrinter.logKOTToConsole({
+      // Open print window when printer not connected
+      kotPrinter.openPrintWindow({
         ...baseData,
         items: kitchenItems,
-        printerLabel: 'KITCHEN ORDER'
+        printerLabel: '🍳 KITCHEN ORDER'
       });
     }
   }
 
-  // Print/log Bar KOT if there are bar items
+  // Print Bar KOT if there are bar items
   if (barItems.length > 0) {
     const barStatus = dualPrinter.barPrinter.isConnected();
     if (barStatus) {
       const printed = await dualPrinter.barPrinter.printKOT({
         ...baseData,
         items: barItems,
-        printerLabel: 'BAR ORDER'
+        printerLabel: '🍹 BAR ORDER'
       });
       success = success && printed;
     } else {
-      // Log to console when printer not connected
-      console.log('\n🍹 BAR PRINTER OUTPUT:');
-      kotPrinter.logKOTToConsole({
-        ...baseData,
-        items: barItems,
-        printerLabel: 'BAR ORDER'
-      });
+      // Open print window when printer not connected (with small delay to avoid popup block)
+      setTimeout(() => {
+        kotPrinter.openPrintWindow({
+          ...baseData,
+          items: barItems,
+          printerLabel: '🍹 BAR ORDER'
+        });
+      }, 500);
     }
   }
 
